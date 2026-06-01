@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import './Home.css'
 
 function Home() {
@@ -21,38 +22,16 @@ function Home() {
         <div className="hero-background"></div>
       </section>
 
-      {/* About Section */}
-      <section className="about">
-        <div className="about-content">
+      {/* About Teaser Section */}
+      <section className="about-teaser">
+        <div className="teaser-content">
           <h2>Qui sont les Templiers ?</h2>
           <p>
-            Les Templiers [TMPL] sont une organisation militaire d'élite sur le serveur semi-RP Moonaris. 
-            Fondée sur l'ancien serveur semi-rp Sunaris sur les principes de puissance, d'honneur et de camaraderie, notre faction domine le paysage 
-            politique, militaire et économique du serveur.
+            Les Templiers [TMPL] sont une organisation militaire d'élite sur le serveur semi-RP Moonaris...
           </p>
-          <p>
-            Avec des joueurs expérimentés et une structure organisée, nous offrons bien plus qu'une simple team : 
-            nous offrons une communauté, une protection et des opportunités.
-          </p>
-          
-          <div className="stats-grid">
-            <div className="stat">
-              <h3>15+</h3>
-              <p>Membres actifs</p>
-            </div>
-            <div className="stat">
-              <h3>2000+</h3>
-              <p>Heures cumulées</p>
-            </div>
-            <div className="stat">
-              <h3>Moonaris</h3>
-              <p>Serveur semi-RP</p>
-            </div>
-            <div className="stat">
-              <h3>2023</h3>
-              <p>Année de création</p>
-            </div>
-          </div>
+          <Link to="/description" className="discover-link">
+            Découvrir notre histoire complète →
+          </Link>
         </div>
       </section>
 
@@ -61,6 +40,18 @@ function Home() {
         <h2>Nos Services</h2>
         <p className="section-subtitle">Ce que nous proposons aux alliés et partenaires</p>
         <div className="services-grid">
+          <div className="service-card">
+            <div className="service-icon">🛡️</div>
+            <h3>Protection</h3>
+            <p>Défense contre les raids et les agressions. Sécurité garantie pour vos bases.</p>
+            <span className="service-badge">Contrat disponible</span>
+          </div>
+          <div className="service-card">
+            <div className="service-icon">⚔️</div>
+            <h3>Conquêtes</h3>
+            <p>Expansion territoriale et prise de contrôle de zones stratégiques.</p>
+            <span className="service-badge">Sur demande</span>
+          </div>
           <div className="service-card">
             <div className="service-icon">💼</div>
             <h3>Alliances</h3>
