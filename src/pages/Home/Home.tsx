@@ -117,7 +117,9 @@ function Home() {
           <div className="cta-box contracts">
             <h3>📜 Contrats</h3>
             <p>Travaillez avec nous sur des projets spécifiques et bénéficiez de nos services.</p>
-            <button className="cta-button secondary">Nous contacter</button>
+            <button className="cta-button secondary" onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}>
+              Nous contacter
+            </button>
           </div>
         </div>
       </section>
@@ -125,16 +127,10 @@ function Home() {
       {/* Contact Section */}
       <section className="contact">
         <h2>Nous Contacter</h2>
-        <p>Discord, Minecraft ou forums - Choisissez votre moyen de communication</p>
+        <p>Pour toutes infos supplémentaires, veuillez choisir ces moyens de communications :</p>
         <div className="contact-methods">
-          <a href="#" className="contact-button">
+          <a href="https://discord.gg/SJsAQnkz44" className="contact-button" id="contact">
             <span>💬</span> Discord
-          </a>
-          <a href="#" className="contact-button">
-            <span>🎮</span> Minecraft IGN
-          </a>
-          <a href="#" className="contact-button">
-            <span>📧</span> Email
           </a>
         </div>
       </section>

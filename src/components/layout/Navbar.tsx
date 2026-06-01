@@ -36,7 +36,7 @@ function Navbar() {
                         <Link to="/" onClick={closeMenu}>Accueil</Link>
                     </li>
                     <li>
-                        <Link to="/description" onClick={closeMenu}>Qui nous sommes ?</Link>
+                        <Link to="/description" onClick={closeMenu}>Qui sommes-nous ?</Link>
                     </li>
                 </ul>
             </div>
