@@ -131,6 +131,9 @@ export default function AdminPanel() {
       <div className="admin-container">
         <div className="login-form">
           <h2>Accès Administrateur</h2>
+          <p className="admin-subtitle">
+            Accès réservé aux officiers des Templiers
+          </p>
           <form onSubmit={handleLogin}>
             <div className="form-group">
               <label htmlFor="email">Email</label>
@@ -212,7 +215,7 @@ export default function AdminPanel() {
         {selectedResponse && (
           <div className="response-detail">
             <h3>Détails de la candidature #{selectedResponse.num_formulaire}</h3>
-            
+
             <div className="detail-section">
               <h4>Informations personnelles</h4>
               <p><strong>Pseudo Minecraft:</strong> {selectedResponse.minecraft_pseudo}</p>
