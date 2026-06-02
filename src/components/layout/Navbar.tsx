@@ -38,6 +38,9 @@ function Navbar() {
                     <li>
                         <Link to="/description" onClick={closeMenu}>Qui sommes-nous ?</Link>
                     </li>
+                    <li>
+                        <Link to="/contact" onClick={closeMenu} className="navbar-apply">Candidater</Link>
+                    </li>
                 </ul>
             </div>
         </nav>
