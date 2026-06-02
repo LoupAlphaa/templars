@@ -96,6 +96,23 @@
   width: calc(100% - 3rem);
 }
 
+.navbar-apply {
+  background: linear-gradient(135deg, #b22222, #8b1a1a) !important;
+  padding: 0.6rem 1.2rem !important;
+  border-radius: 20px !important;
+  margin-left: 0.5rem;
+  box-shadow: 0 4px 15px rgba(178, 34, 34, 0.3);
+}
+
+.navbar-apply::after {
+  display: none;
+}
+
+.navbar-apply:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(178, 34, 34, 0.4);
+}
+
 /* Hamburger Menu */
 .hamburger {
   display: none;

@@ -1,15 +1,32 @@
 .form-container {
   max-width: 700px;
-  margin: 2rem auto;
-  padding: 2rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #f9f9f9;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+  background: #0f1115;
+  color: #e0e0e0;
+  min-height: 100vh;
+  position: relative;
+}
+
+.form-container::before {
+  content: '✠';
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  font-size: 3rem;
+  opacity: 0.05;
+  pointer-events: none;
 }
 
 .form-container h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 2.5rem;
   margin-bottom: 1.5rem;
   text-align: center;
+  letter-spacing: 2px;
+  color: #fff;
+  margin-top: 0;
+  text-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
 .form-group {
@@ -19,7 +36,9 @@
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  font-weight: 500;
+  font-weight: 600;
+  color: #e0e0e0;
+  letter-spacing: 0.5px;
 }
 
 .form-group input[type="text"],
@@ -29,26 +48,35 @@
 .form-group textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(178, 34, 34, 0.3);
   border-radius: 4px;
   font-size: 1rem;
   font-family: inherit;
   box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: rgba(224, 224, 224, 0.5);
 }
 
 .form-group input:focus,
 .form-group textarea:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #4a90e2;
-  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+  border-color: #b22222;
+  box-shadow: 0 0 0 3px rgba(178, 34, 34, 0.2);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 .form-group input:disabled,
 .form-group textarea:disabled,
 .form-group select:disabled {
-  background-color: #f0f0f0;
+  background-color: rgba(255, 255, 255, 0.02);
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* Checkbox inline styling */
@@ -56,12 +84,14 @@
   display: flex;
   align-items: center;
   cursor: pointer;
+  font-weight: 600;
 }
 
 .checkbox-group input[type="checkbox"] {
   width: auto;
   margin-right: 0.5rem;
   cursor: pointer;
+  accent-color: #b22222;
 }
 
 .checkbox-inline {
@@ -71,12 +101,14 @@
   margin-bottom: 0.75rem;
   cursor: pointer;
   font-weight: normal;
+  color: #e0e0e0;
 }
 
 .checkbox-inline input[type="checkbox"] {
   width: auto;
   margin-right: 0.5rem;
   cursor: pointer;
+  accent-color: #b22222;
 }
 
 .skills-grid {
@@ -87,31 +119,36 @@
 }
 
 .error-text {
-  color: #d32f2f;
+  color: #ff8a80;
   font-size: 0.875rem;
   margin-top: 0.25rem;
 }
 
 button {
   width: 100%;
-  padding: 0.75rem;
-  background-color: #4a90e2;
+  padding: 0.9rem;
+  background: linear-gradient(135deg, #b22222, #8b1a1a);
   color: white;
-  border: none;
+  border: 1px solid rgba(178, 34, 34, 0.4);
   border-radius: 4px;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 15px rgba(178, 34, 34, 0.3);
 }
 
 button:hover:not(:disabled) {
-  background-color: #357abd;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(178, 34, 34, 0.4);
 }
 
 button:disabled {
-  background-color: #ccc;
+  background: rgba(178, 34, 34, 0.2);
   cursor: not-allowed;
+  transform: none;
 }
 
 .alert {
@@ -119,24 +156,28 @@ button:disabled {
   padding: 1rem;
   border-radius: 4px;
   text-align: center;
+  border-left: 4px solid;
 }
 
 .alert-success {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #81c784;
+  border-color: #4caf50;
 }
 
 .alert-error {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background-color: rgba(178, 34, 34, 0.1);
+  color: #ff8a80;
+  border-color: #b22222;
 }
 
 @media (max-width: 768px) {
   .form-container {
-    padding: 1rem;
-    margin: 1rem;
+    padding: 2rem 1rem;
+  }
+
+  .form-container h2 {
+    font-size: 2rem;
   }
 
   .skills-grid {
