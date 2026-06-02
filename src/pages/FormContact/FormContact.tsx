@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import './FormContact.css'
 
@@ -34,6 +34,46 @@ const SKILLS_OPTIONS = [
 ]
 
 export default function FormContact() {
+
+  const [user, setUser] = useState<any>(null)
+  const [application, setApplication] = useState<any>(null)
+  const [checkingApplication, setCheckingApplication] = useState(true)
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const {
+        data: { user }
+      } = await supabase.auth.getUser()
+
+      console.log('Utilisateur actuel:', user)
+
+      setUser(user)
+
+      if (user) {
+        const { data } = await supabase
+          .from('form_responses')
+          .select('*')
+          .eq('candidate_id', user.id)
+          .maybeSingle()
+
+        setApplication(data)
+      }
+
+      setCheckingApplication(false)
+    }
+
+    loadUser()
+  }, [])
+
+  const signInWithDiscord = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'discord',
+      options: {
+        redirectTo: `${window.location.origin}/contact`
+      }
+    })
+  }
+
   const [formData, setFormData] = useState<FormData>({
     minecraft_pseudo: '',
     irl_name: '',
@@ -47,7 +87,7 @@ export default function FormContact() {
     weekly_playtime: '',
     play_schedule: '',
     motivation: '',
-    expected_benefits: '',
+    expected_benefits: ''
   })
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -79,9 +119,15 @@ export default function FormContact() {
     setSuccess(false)
 
     try {
+      console.log(user)
+      console.log(user?.id)
       const { error: insertError } = await supabase
         .from('form_responses')
-        .insert([formData])
+        .insert([{...formData, candidate_id: user?.id}])
+
+      if (insertError) {
+        console.error(insertError)
+      }
 
       if (insertError) throw insertError
 
@@ -99,14 +145,81 @@ export default function FormContact() {
         weekly_playtime: '',
         play_schedule: '',
         motivation: '',
-        expected_benefits: '',
+        expected_benefits: ''
       })
-      setTimeout(() => setSuccess(false), 5000)
+      setTimeout(() => {
+        setSuccess(false)
+        window.location.reload()
+      }, 5000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (checkingApplication) {
+    return (
+      <div className="form-container">
+        <h2>Chargement...</h2>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div className="form-container">
+        <h2>Rejoignez les Templiers</h2>
+        <div className="discord-login-card">
+          <h3>✠ Authentification requise</h3>
+          <p>
+            Avant de soumettre votre candidature,
+            vous devez vous identifier avec votre compte Discord.
+          </p>
+          <button onClick={signInWithDiscord}>
+            Se connecter avec Discord
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (application) {
+    return (
+      <div className="form-container">
+        <h2>✠ Dossier de candidature</h2>
+        <div className="application-status-card">
+          <h3>{application.minecraft_pseudo}</h3>
+          <div className={`status-badge ${application.status}`}>
+            {application.status}
+          </div>
+          <p>
+            Votre candidature a déjà été enregistrée.
+          </p>
+          {application.status === 'pending' && (
+            <p>
+              Le Conseil des Templiers examine actuellement votre dossier.
+            </p>
+          )}
+          {application.status === 'accepted' && (
+            <p>
+              Félicitations ! Votre candidature a été acceptée.
+            </p>
+          )}
+          {application.status === 'rejected' && (
+            <p>
+              Votre candidature n'a malheureusement pas été retenue.
+            </p>
+          )}
+          {application.admin_comment && (
+            <div className="council-message">
+              <h4>Message du Conseil</h4>
+              <p>{application.admin_comment}</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
