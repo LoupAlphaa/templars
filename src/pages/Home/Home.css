@@ -114,6 +114,8 @@
   transition: all 0.25s ease;
   text-transform: uppercase;
   letter-spacing: 1px;
+  display: inline-block;
+  text-decoration: none;
 }
 
 .cta-button.primary {

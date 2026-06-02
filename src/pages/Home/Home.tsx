@@ -15,7 +15,7 @@ function Home() {
             Puissance, honneur, et domination - Bienvenue dans l'élite
           </p>
           <div className="hero-buttons">
-            <button className="cta-button primary">Rejoindre la Team</button>
+            <Link to="/contact" className="cta-button primary">Rejoindre la Team</Link>
             <button className="cta-button secondary">Nos Services</button>
           </div>
         </div>
@@ -111,7 +111,7 @@ function Home() {
           <div className="cta-box recruitment">
             <h3>🎖️ Recrutement</h3>
             <p>Rejoignez l'armée des Templiers et devenez membre à part entière de notre organisation.</p>
-            <button className="cta-button primary">Candidater maintenant</button>
+            <Link to="/contact" className="cta-button primary">Candidater maintenant</Link>
           </div>
           
           <div className="cta-box contracts">
