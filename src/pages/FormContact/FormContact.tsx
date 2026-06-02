@@ -74,6 +74,12 @@ export default function FormContact() {
     })
   }
 
+  const signOutWithDiscord = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    setApplication(null)
+  }
+
   const [formData, setFormData] = useState<FormData>({
     minecraft_pseudo: '',
     irl_name: '',
@@ -187,6 +193,9 @@ export default function FormContact() {
   if (application) {
     return (
       <div className="form-container">
+        <button className="signout-button" onClick={signOutWithDiscord}>
+          Se déconnecter
+        </button>
         <h2>✠ Dossier de candidature</h2>
         <div className="application-status-card">
           <h3>{application.minecraft_pseudo}</h3>
