@@ -19,14 +19,18 @@ interface FormData {
 }
 
 const SKILLS_OPTIONS = [
-  'Construction',
-  'Redstone',
-  'Farming',
-  'Exploration',
-  'PvP',
-  'Terrain Design',
-  'Organisation',
-  'Leadership',
+  { name: 'Architecte', description: 'Conçois les build de A a Z avec imagination sans reproduction ni schématique' },
+  { name: 'Builder', description: 'Réalisation de build à partir d\'un schématique ou modèle' },
+  { name: 'Décorateur', description: 'Esthétique et design détaillé des bases' },
+  { name: 'Redstoneur', description: 'Conçois des système déjà réalisé ou par le biais de tuto' },
+  { name: 'Ingénieur', description: 'Conçois soi-même les usines et systèmes redstones' },
+  { name: 'Farmer', description: 'Farm de matériaux, de clés de saison etc.. Le minage n\'est pas inclus dans cette catégorie' },
+  { name: 'PvE', description: 'Capacité à dompter des Boss redoutable et puissant' },
+  { name: 'Mineur', description: 'Mine plus de 10h par semaine' },
+  { name: 'Tryhardeur', description: 'Capacité à farm ou miner des journées entières' },
+  { name: 'Moddeur', description: 'Capacité à modifier des mods ou éventuellement en créer' },
+  { name: 'Comptable', description: 'Gestion et bonne manipulation du logiciel Excel ou Google sheet' },
+  { name: 'Développeur', description: 'Capacité à utiliser un ou des langages de programmation' },
 ]
 
 export default function FormContact() {
@@ -209,14 +213,17 @@ export default function FormContact() {
           <label>Quelles sont vos compétences principales en jeu ? *</label>
           <div className="skills-grid">
             {SKILLS_OPTIONS.map((skill) => (
-              <label key={skill} className="checkbox-inline">
+              <label key={skill.name} className="skill-card">
                 <input
                   type="checkbox"
-                  checked={formData.skills.includes(skill)}
-                  onChange={() => handleSkillChange(skill)}
+                  checked={formData.skills.includes(skill.name)}
+                  onChange={() => handleSkillChange(skill.name)}
                   disabled={loading}
                 />
-                {skill}
+                <div className="skill-content">
+                  <strong>{skill.name}</strong>
+                  <small>{skill.description}</small>
+                </div>
               </label>
             ))}
           </div>
