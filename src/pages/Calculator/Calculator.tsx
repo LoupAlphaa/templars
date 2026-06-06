@@ -13,19 +13,21 @@ export default function Calculator() {
     const [data, setData] = useState<AlloysData | null>(null);
     const [alloysNames, setAlloysNames] = useState<string[]>([]);
     const [calculatorMode, setCalculatorMode] = useState<'ingots' | 'equipment'>('ingots');
-    
+
     // Ingots mode
     const [selectedAlloy, setSelectedAlloy] = useState<string>('Bronze');
     const [ingotQuantity, setIngotQuantity] = useState<number>(1);
-    
+
     // Equipment mode
     const [selectedStartAlloy, setSelectedStartAlloy] = useState<string>('Netherite');
     const [selectedTargetAlloy, setSelectedTargetAlloy] = useState<string>('Bronze');
     const [selectedEquipmentType, setSelectedEquipmentType] = useState<string>('Helmet');
-    
+
     const [result, setResult] = useState<CalculationResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [showSteps, setShowSteps] = useState(false);
+
+    const startIndex = alloysNames.indexOf(selectedStartAlloy);
 
     // Load alloys data
     useEffect(() => {
@@ -45,9 +47,9 @@ export default function Calculator() {
             const recipe = Array.isArray(data.alloys[0][selectedAlloy]?.items)
                 ? data.alloys[0][selectedAlloy].items[0]
                 : {};
-            
+
             const materialMap = new Map<string, number>();
-            
+
             Object.entries(recipe).forEach(([item, qty]) => {
                 const quantity = (qty as number) * ingotQuantity;
                 materialMap.set(item, (materialMap.get(item) || 0) + quantity);
@@ -89,13 +91,13 @@ export default function Calculator() {
             <div className="calculator-container">
                 {/* Mode Tabs */}
                 <div className="mode-tabs">
-                    <button 
+                    <button
                         className={`mode-tab ${calculatorMode === 'ingots' ? 'active' : ''}`}
                         onClick={() => setCalculatorMode('ingots')}
                     >
                         ⚱️ Lingots
                     </button>
-                    <button 
+                    <button
                         className={`mode-tab ${calculatorMode === 'equipment' ? 'active' : ''}`}
                         onClick={() => setCalculatorMode('equipment')}
                     >
@@ -144,10 +146,37 @@ export default function Calculator() {
                             <select
                                 id="start-alloy"
                                 value={selectedStartAlloy}
-                                onChange={(e) => setSelectedStartAlloy(e.target.value)}
+                                onChange={(e) => {
+                                    const newStart = e.target.value;
+                                    setSelectedStartAlloy(newStart);
+                                    // If start equals target, change target to next alloy in progression
+                                    if (newStart === selectedTargetAlloy) {
+                                        if (newStart === 'Netherite') {
+                                            setSelectedTargetAlloy(alloysNames[0]);
+                                        } else {
+                                            const startIndex = alloysNames.indexOf(newStart);
+
+                                            if (startIndex >= 0 && startIndex + 1 < alloysNames.length) {
+                                                setSelectedTargetAlloy(alloysNames[startIndex + 1]);
+                                            }
+                                        }
+                                    } else {
+                                        const startIndex =
+                                            newStart === 'Netherite' ? -1 : alloysNames.indexOf(newStart);
+                                        const targetIndex =
+                                            selectedTargetAlloy === 'Netherite'
+                                                ? -1
+                                                : alloysNames.indexOf(selectedTargetAlloy);
+                                        if (startIndex > targetIndex) {
+                                            if (startIndex + 1 < alloysNames.length) {
+                                                setSelectedTargetAlloy(alloysNames[startIndex + 1]);
+                                            }
+                                        }
+                                    }
+                                }}
                             >
                                 <option value="Netherite">Netherite</option>
-                                {alloysNames.map((alloy) => (
+                                {alloysNames.slice(0, -1).map((alloy) => (
                                     <option key={alloy} value={alloy}>
                                         {alloy}
                                     </option>
@@ -162,8 +191,12 @@ export default function Calculator() {
                                 value={selectedTargetAlloy}
                                 onChange={(e) => setSelectedTargetAlloy(e.target.value)}
                             >
-                                {alloysNames.map((alloy) => (
-                                    <option key={alloy} value={alloy}>
+                                {alloysNames.map((alloy, index) => (
+                                    <option
+                                        key={alloy}
+                                        value={alloy}
+                                        disabled={index <= startIndex}
+                                    >
                                         {alloy}
                                     </option>
                                 ))}
@@ -214,7 +247,7 @@ export default function Calculator() {
                             <div className="steps-section">
                                 <div className="steps-header">
                                     <h2>Étapes d'alliage</h2>
-                                    <button 
+                                    <button
                                         className={`toggle-button ${showSteps ? 'open' : ''}`}
                                         onClick={() => setShowSteps(!showSteps)}
                                         aria-expanded={showSteps}
