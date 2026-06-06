@@ -4,6 +4,7 @@ import Home from './pages/Home/Home'
 import Description from './pages/Description/Description'
 import FormContact from './pages/FormContact/FormContact'
 import AdminPanel from './pages/AdminPanel/AdminPanel'
+import Calculator from './pages/Calculator/Calculator'
 import NotFound from './pages/NotFound/NotFound'
 
 export const router = createBrowserRouter([
@@ -23,6 +24,10 @@ export const router = createBrowserRouter([
             {
                 path: 'contact',
                 element: <FormContact />,
+            },
+            {
+                path: 'calculator',
+                element: <Calculator />,
             },
             {
                 path: 'admin',
