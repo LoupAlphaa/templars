@@ -1,0 +1,174 @@
+{
+    "combustibles": [
+        {
+            "Charcoal": {
+                "temperature": 750
+            },
+            "Coal": {
+                "temperature": 800
+            },
+            "Coal block": {
+                "temperature": 900
+            },
+            "Fire charge": {
+                "temperature": 1000
+            },
+            "Lava bucket": {
+                "temperature": 1200
+            },
+            "Blaze powder": {
+                "temperature": 1600
+            },
+            "Magma cream": {
+                "temperature": 1800
+            },
+            "End crystal": {
+                "temperature": 2000
+            },
+            "Echo shard": {
+                "temperature": 3000
+            }
+        }
+    ],
+    "alloys": [
+        {
+            "Bronze": {
+                "items": [
+                    {
+                        "Copper Ingot": 16,
+                        "Iron Ingot": 16,
+                        "Resin brick": 8,
+                        "Quartz": 16
+                    }
+                ],
+                "temperature": 600,
+                "time": 8,
+                "success_rate": 0.95,
+                "level": 1
+            },
+            "Hardened steel": {
+                "items": [
+                    {
+                        "Bronze": 2,
+                        "Gold Ingot": 16,
+                        "Emerald": 16,
+                        "Resin brick": 8
+                    }
+                ],
+                "temperature": 900,
+                "time": 15,
+                "success_rate": 0.9,
+                "level": 2
+            },
+            "Ombralite": {
+                "items": [
+                    {
+                        "Hardened steel": 2,
+                        "Diamond": 8,
+                        "Emerald": 16,
+                        "Obsidian": 12,
+                        "Netherite Ingot": 1,
+                        "Nethe brick": 4,
+                        "Resin brick": 8
+                    }
+                ],
+                "temperature": 1200,
+                "time": 25,
+                "success_rate": 0.8,
+                "level": 5
+            },
+            "Titane": {
+                "items": [
+                    {
+                        "Ombralite": 2,
+                        "Diamond": 12,
+                        "Netherite ingot": 1,
+                        "Amethyst cluster": 8,
+                        "Ender pearl": 4,
+                        "Resin brick": 8
+                    }
+                ],
+                "temperature": 1600,
+                "time": 40,
+                "success_rate": 0.7,
+                "level": 8
+            },
+            "Forged Obsidian": {
+                "items": [
+                    {
+                        "Titane": 2,
+                        "Diamond": 16,
+                        "Obsidian": 24,
+                        "Netherite Ingot": 1,
+                        "Amethyst cluster": 8,
+                        "Resin brick": 8,
+                        "Nether star": 1
+                    }
+                ],
+                "temperature": 2000,
+                "time": 60,
+                "success_rate": 0.6,
+                "level": 10
+            }
+        }
+    ],
+    "cooler": [
+        {
+            "Ice": {
+                "cooling_speed": 0
+            },
+            "Packed ice": {
+                "cooling_speed": 0.15
+            },
+            "Blue ice": {
+                "cooling_speed": 0.3
+            },
+            "Powder snow": {
+                "cooling_speed": 0.6
+            },
+            "Frosted ice": {
+                "cooling_speed": 0.5
+            }
+        }
+    ],
+    "equipments": [
+        {
+            "Pickaxe":{
+                "ingot": 3,
+                "rod": 2
+            },
+            "Axe":{
+                "ingot": 3,
+                "rod": 2
+            },
+            "Shovel":{
+                "ingot": 1,
+                "rod": 2
+            },
+            "Sword":{
+                "ingot": 2,
+                "rod": 1
+            },
+            "Hoe":{
+                "ingot": 2,
+                "rod": 2
+            },
+            "Helmet":{
+                "ingot": 5,
+                "rod": 0
+            },
+            "Chestplate":{
+                "ingot": 8,
+                "rod": 0
+            },
+            "Leggings":{
+                "ingot": 7,
+                "rod": 0
+            },
+            "Boots":{
+                "ingot": 4,
+                "rod": 0
+            }
+        }
+    ]
+}
