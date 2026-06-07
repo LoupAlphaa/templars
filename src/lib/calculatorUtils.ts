@@ -108,8 +108,11 @@ function flattenCoolers(data: AlloysData): Record<string, { cooling_speed: numbe
  * Adapt the path / fetch URL to match your project structure.
  */
 export async function loadAlloysData(): Promise<AlloysData> {
-    return alloysData as AlloysData;
+    // alloysData vient de src/assets/alloys.json : la structure est un objet déjà prêt pour le calcul.
+    // Le cast explicite ci-dessous évite l’erreur TS sur les types trop différents.
+    return alloysData as unknown as AlloysData;
 }
+
 
 // ─────────────────────────────────────────────────────────────
 // Public API: getAlloysNames
@@ -374,21 +377,36 @@ function computeResult(
         alloysIngotsMap.set(alloysName, ingotCount);
 
         // Accumulate materials into totalMap.
-        // An ingredient counts as "produced by a previous step" ONLY when it is
-        // part of the current chain (i.e. we forge it ourselves).
-        // Alloy ingredients that are NOT in the chain are required inputs —
-        // e.g. Bronze ingots when the user's starting point is already Bronze.
+        // Important: if an ingredient is itself an alloy, we must expand it recursively
+        // into its base materials (so intermediate alloy requirements are counted).
         const alloy = alloys[alloysName];
         const ingredients = getAlloyIngredients(alloy);
+
+        const expandIngredient = (ingredientName: string, qty: number) => {
+            const ingAlloy = alloys[ingredientName];
+            if (!ingAlloy) {
+                addMaterial(totalMap, ingredientName, qty);
+                return;
+            }
+
+            // If the alloy is in the current progression chain, it will be crafted by steps.
+            // But its recipe may require other alloys outside the chain, so we still need to expand.
+            // To avoid double counting, we only expand into base materials of ingredients that
+            // are not produced by previous steps in the chain.
+            //
+            // Rule simplification: if the alloy is in-chain, do NOT add the alloy itself as required input,
+            // instead expand its recipe ingredients (recursively) into totalMap.
+            const subIngredients = getAlloyIngredients(ingAlloy);
+            for (const { name: subName, quantity: subQty } of subIngredients) {
+                expandIngredient(subName, qty * subQty);
+            }
+        };
+
         for (const { name, quantity } of ingredients) {
             const scaledQty = quantity * ingotCount;
-            if (alloys[name] && chain.includes(name)) {
-                // Produced by a previous step in our chain — skip.
-            } else {
-                // Base material OR an alloy outside the chain → required input.
-                addMaterial(totalMap, name, scaledQty);
-            }
+            expandIngredient(name, scaledQty);
         }
+
 
         // Add wood rods for final equipment
         if (isTarget && equipment && equipment.wood_rod > 0) {

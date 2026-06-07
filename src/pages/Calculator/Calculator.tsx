@@ -98,6 +98,7 @@ export default function Calculator() {
                         ⚱️ Lingots
                     </button>
                     <button
+                        disabled
                         className={`mode-tab ${calculatorMode === 'equipment' ? 'active' : ''}`}
                         onClick={() => setCalculatorMode('equipment')}
                     >
