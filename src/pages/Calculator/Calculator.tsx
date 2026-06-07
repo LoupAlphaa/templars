@@ -10,6 +10,57 @@ import {
 import { getItemIcon } from '../../lib/itemIcons';
 import './Calculator.css';
 
+
+// ── Cascade helpers ──────────────────────────────────────────────────────────
+function computeCascadeMaxes(
+    chain: string[],
+    alloysIngotsMax: Record<string, number>,
+    ownedIngots: Record<string, number>,
+    isEquipmentMode: boolean,
+): Record<string, number> {
+    const lastIdx = chain.length - 1;
+    const ratios: number[] = chain.map((name, i) => {
+        if (i === lastIdx) return 1;
+        const thisMax = alloysIngotsMax[name] ?? 1;
+        const nextMax = alloysIngotsMax[chain[i + 1]] ?? 1;
+        return nextMax > 0 ? thisMax / nextMax : 1;
+    });
+    const consumedByHigher = (targetIdx: number): number => {
+        let consumed = 0;
+        for (let j = targetIdx + 1; j <= lastIdx; j++) {
+            const ownedAtJ = ownedIngots[chain[j]] ?? 0;
+            if (ownedAtJ === 0) continue;
+            let cascadeRatio = 1;
+            for (let k = targetIdx; k < j; k++) cascadeRatio *= ratios[k];
+            consumed += ownedAtJ * cascadeRatio;
+        }
+        return consumed;
+    };
+    const result: Record<string, number> = {};
+    chain.forEach((name, idx) => {
+        const rawMax = alloysIngotsMax[name] ?? 0;
+        const baseCap = (isEquipmentMode && idx === lastIdx) ? rawMax - 1 : rawMax;
+        result[name] = Math.max(0, baseCap - consumedByHigher(idx));
+    });
+    return result;
+}
+
+function clampOwnedIngots(
+    chain: string[],
+    alloysIngotsMax: Record<string, number>,
+    ownedIngots: Record<string, number>,
+    isEquipmentMode: boolean,
+): Record<string, number> {
+    const maxes = computeCascadeMaxes(chain, alloysIngotsMax, ownedIngots, isEquipmentMode);
+    const clamped: Record<string, number> = { ...ownedIngots };
+    for (const name of chain) {
+        const cap = maxes[name] ?? 0;
+        if ((clamped[name] ?? 0) > cap) clamped[name] = cap;
+    }
+    return clamped;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Calculator() {
     const [data, setData] = useState<AlloysData | null>(null);
     const [alloysNames, setAlloysNames] = useState<string[]>([]);
@@ -51,24 +102,29 @@ export default function Calculator() {
     useEffect(() => {
         if (!data) return;
 
-        if (calculatorMode === 'ingots') {
-    const calc = calculateMaterialsNeeded(
-        data,
-        'Netherite',
-        selectedAlloy,
-        'Lingot',
-        ownedIngots,
-        ingotQuantity
-    );
+        // First pass with empty owned to get stable alloysIngotsMax and chain order.
+        // Second pass with clamped owned to avoid ghost values (values hidden by the UI
+        // cap but still in state) incorrectly reducing raw-material totals in calculatorUtils.
+        const computeWithClamping = (rawOwned: Record<string, number>) => {
+            if (calculatorMode === 'ingots') {
+                const raw = calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', {}, ingotQuantity);
+                const chain = raw.alloysIngots.map((i) => i.name);
+                const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, false);
+                return calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', clamped, ingotQuantity);
+            } else {
+                const isNetherite = selectedStartAlloy === 'Netherite';
+                const raw = isNetherite
+                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, {})
+                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, {});
+                const chain = raw.alloysIngots.map((i) => i.name);
+                const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, true);
+                return isNetherite
+                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, clamped)
+                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, clamped);
+            }
+        };
 
-    setResult(calc);
-} else {
-            const calc =
-                selectedStartAlloy === 'Netherite'
-                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, ownedIngots)
-                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, ownedIngots);
-            setResult(calc);
-        }
+        setResult(computeWithClamping(ownedIngots));
     }, [data, calculatorMode, selectedAlloy, ingotQuantity, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, ownedIngots]);
 
     if (loading) {
@@ -249,7 +305,7 @@ export default function Calculator() {
                             // both further reduced by what higher-tier owned already covers.
                             const effectiveMax = (idx: number): number => {
                                 const rawMax = result.alloysIngotsMax[chain[idx]];
-                                const baseCap = idx === lastIdx ? rawMax - 1 : rawMax;
+                                const baseCap = idx === lastIdx && calculatorMode === 'equipment' ? rawMax - 1 : rawMax;
                                 return Math.max(0, baseCap - consumedByHigher(idx));
                             };
 
