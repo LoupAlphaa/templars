@@ -259,7 +259,7 @@ export default function Calculator() {
                                     <p className="owned-ingots-hint">Indiquez vos lingots disponibles pour déduire les matériaux correspondants du résultat.</p>
                                     <div className="owned-ingots-list">
                                         {chain.map((name, idx) => {
-                                            const max = effectiveMax(idx);
+                                            const max = calculatorMode==='equipment' ? effectiveMax(idx) : effectiveMax(idx) + 1;
                                             const owned = Math.min(ownedIngots[name] ?? 0, max);
                                             return (
                                                 <div key={name} className="owned-ingot-row">
