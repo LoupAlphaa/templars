@@ -44,15 +44,24 @@ export default function Calculator() {
         if (!data) return;
 
         if (calculatorMode === 'ingots') {
-            // BUGFIX: pour un lingot seul, il faut aussi tenir compte des alliages précédents.
-            // => on calcule comme une progression equipment mais pour le produit 'Lingot'.
-            // On utilise le nouvel utilitaire de calcul "calculateMaterialsNeeded" en démarrant depuis Netherite.
+            // Pour les lingots: on conserve steps (chaîne des alliages) afin d'afficher les étapes.
             const calc = calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot');
-            // multiplier par la quantité demandée.
             const scaledTotal = calc.totalMaterials.map((m) => ({ ...m, quantity: m.quantity * ingotQuantity }));
             const scaledIngots = calc.alloysIngots.map((m) => ({ ...m, quantity: m.quantity * ingotQuantity }));
+
+            const scaledSteps = calc.steps.map((s) => ({
+                ...s,
+                // ingotCount scale (les matériaux bruts & coûts sont déjà calculés pour 1 batch de lingot)
+                ingotCount: s.ingotCount * ingotQuantity,
+                alloysCost: s.alloysCost.map((c) => ({ ...c, quantity: c.quantity * ingotQuantity })),
+                equipmentCost: {
+                    ingot: 0,
+                    rod: 0,
+                },
+            }));
+
             setResult({
-                steps: [],
+                steps: scaledSteps,
                 totalMaterials: scaledTotal,
                 alloysIngots: scaledIngots,
             });
@@ -259,7 +268,7 @@ export default function Calculator() {
                             )}
                         </div>
 
-                        {calculatorMode === 'equipment' && result.steps.length > 0 && (
+                        {result.steps.length > 0 && (
                             <div className="steps-section">
                                 <div className="steps-header">
                                     <h2>Étapes d'alliage</h2>
@@ -294,6 +303,7 @@ export default function Calculator() {
                                                             )}
                                                         </ul>
                                                     </div>
+
                                                     <div className="materials-needed">
                                                         <p className="label">Matériaux pour l'alliage:</p>
                                                         <ul>
@@ -304,6 +314,36 @@ export default function Calculator() {
                                                                 </li>
                                                             ))}
                                                         </ul>
+                                                    </div>
+
+                                                    <div className="thermo-section">
+                                                        <p className="label">Thermique:</p>
+
+                                                        <div className="thermo-row">
+                                                            <strong>Température requise:</strong> {step.temperature}
+                                                        </div>
+
+                                                        <div className="thermo-row">
+                                                            <strong>Combustibles possibles:</strong>
+                                                            <ul>
+                                                                {step.combustiblesPossible.map((c) => (
+                                                                    <li key={c.name}>
+                                                                        {c.name} ({c.temperature})
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+
+                                                        <div className="thermo-row">
+                                                            <strong>Refroidisseurs possibles:</strong>
+                                                            <ul>
+                                                                {step.refroidisseursPossible.map((cool) => (
+                                                                    <li key={cool.name}>
+                                                                        {cool.name} (−{cool.cooling_speed}) → temps: {cool.coolingTime.toFixed(2)}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
