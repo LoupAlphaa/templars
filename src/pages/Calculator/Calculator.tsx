@@ -3,6 +3,7 @@ import {
     loadAlloysData,
     getAlloysNames,
     calculateFromNetherite,
+    calculateMaterialsNeeded,
     type CalculationResult,
     type AlloysData,
 } from '../../lib/calculatorUtils';
@@ -68,10 +69,11 @@ export default function Calculator() {
             });
         } else {
             // For equipment
-            if (selectedStartAlloy === 'Netherite') {
-                const calc = calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType);
-                setResult(calc);
-            }
+            const calc =
+                selectedStartAlloy === 'Netherite'
+                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType)
+                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType);
+            setResult(calc);
         }
     }, [data, calculatorMode, selectedAlloy, ingotQuantity, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType]);
 

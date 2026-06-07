@@ -76,7 +76,60 @@ export function getEquipmentCost(data: AlloysData, equipmentType: string): Equip
     return equipmentsObj[equipmentType] || { ingot: 0, rod: 0 };
 }
 
-// Calculate all materials needed to go from one alloy to another
+function addToMaterialMap(map: Map<string, number>, material: string, quantity: number) {
+    const current = map.get(material) || 0;
+    map.set(material, current + quantity);
+}
+
+function mapToSortedArray(materialMap: Map<string, number>): MaterialRequirement[] {
+    return Array.from(materialMap.entries())
+        .map(([name, quantity]) => ({ name, quantity }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function isAlloyName(data: AlloysData, itemName: string): boolean {
+    const alloysObj = data.alloys[0];
+    return Boolean(alloysObj?.[itemName]);
+}
+
+/**
+ * Expand an "item" into its base materials recursively.
+ * - If itemName is an alloy: expand its recipe.
+ * - If itemName is not an alloy: treat as a base material.
+ *
+ * Special case: Netherite Ingot / Netherite Rod are terminal base items.
+ */
+function expandItemToBaseMaterials(
+    data: AlloysData,
+    itemName: string,
+    quantity: number,
+    materialMap: Map<string, number>,
+    visitStack: Set<string>
+) {
+    const terminalNetherite = itemName === 'Netherite Ingot' || itemName === 'Netherite Rod' || itemName.startsWith('Netherite ');
+
+    if (quantity <= 0) return;
+
+    if (terminalNetherite || !isAlloyName(data, itemName)) {
+        addToMaterialMap(materialMap, itemName, quantity);
+        return;
+    }
+
+    // Prevent infinite loops if data is inconsistent
+    if (visitStack.has(itemName)) {
+        addToMaterialMap(materialMap, itemName, quantity);
+        return;
+    }
+
+    visitStack.add(itemName);
+    const recipe = getAlloyRecipe(data, itemName);
+    for (const material of recipe) {
+        expandItemToBaseMaterials(data, material.name, material.quantity * quantity, materialMap, visitStack);
+    }
+    visitStack.delete(itemName);
+}
+
+// Calculate all materials needed to go from one alloy to another (equipment mode)
 export function calculateMaterialsNeeded(
     data: AlloysData,
     startAlloy: string,
@@ -92,66 +145,55 @@ export function calculateMaterialsNeeded(
     }
 
     const steps: AlloysStep[] = [];
-    const materialMap = new Map<string, number>();
+    const totalMap = new Map<string, number>();
+    const equipmentCost = getEquipmentCost(data, equipmentType);
 
-    // For each alloy from start to target
+    // For each step alloy from start to target
     for (let i = startIdx; i <= targetIdx; i++) {
         const alloyName = alloysNames[i];
-        const equipmentCost = getEquipmentCost(data, equipmentType);
 
         // If not the starting alloy, we need the previous alloy's equipment
+        const stepAlloysCost: MaterialRequirement[] = [];
+
         if (i > startIdx) {
             const prevAlloyName = alloysNames[i - 1];
-            addToMaterialMap(materialMap, `${prevAlloyName} ${equipmentType}`, 1);
+            const prevEquipmentItem = `${prevAlloyName} ${equipmentType}`;
+            // This is an item that must be crafted => expand it
+            expandItemToBaseMaterials(data, prevEquipmentItem, 1, totalMap, new Set());
+            stepAlloysCost.push({ name: prevEquipmentItem, quantity: 1 });
         }
 
-        // Get the recipe for this alloy
+        // Base recipe materials for current alloy
         const recipe = getAlloyRecipe(data, alloyName);
-
-        const stepMaterials: MaterialRequirement[] = [];
-
-        // For each material in the recipe
         for (const material of recipe) {
-            const quantity = material.quantity;
-            addToMaterialMap(materialMap, material.name, quantity);
-            stepMaterials.push({
-                name: material.name,
-                quantity,
-            });
+            // Material may itself be an alloy => expand into base materials
+            expandItemToBaseMaterials(data, material.name, material.quantity, totalMap, new Set());
+            stepAlloysCost.push({ name: material.name, quantity: material.quantity });
         }
 
-        // Add equipment cost (ingots and rods of the previous alloy)
+        // Equipment cost (ingots/rods) needed to craft the previous alloy equipment
         if (i > startIdx) {
             const prevAlloyName = alloysNames[i - 1];
+
             if (equipmentCost.ingot > 0) {
-                addToMaterialMap(materialMap, `${prevAlloyName} Ingot`, equipmentCost.ingot);
-                stepMaterials.push({
-                    name: `${prevAlloyName} Ingot`,
-                    quantity: equipmentCost.ingot,
-                });
+                const prevIngotItem = `${prevAlloyName} Ingot`;
+                expandItemToBaseMaterials(data, prevIngotItem, equipmentCost.ingot, totalMap, new Set());
+                stepAlloysCost.push({ name: prevIngotItem, quantity: equipmentCost.ingot });
             }
             if (equipmentCost.rod > 0) {
-                addToMaterialMap(materialMap, `${prevAlloyName} Rod`, equipmentCost.rod);
-                stepMaterials.push({
-                    name: `${prevAlloyName} Rod`,
-                    quantity: equipmentCost.rod,
-                });
+                const prevRodItem = `${prevAlloyName} Rod`;
+                expandItemToBaseMaterials(data, prevRodItem, equipmentCost.rod, totalMap, new Set());
+                stepAlloysCost.push({ name: prevRodItem, quantity: equipmentCost.rod });
             }
         } else {
-            // For the starting alloy, we need Netherite
+            // Starting alloy: need Netherite materials to build the first equipment layer
             if (equipmentCost.ingot > 0) {
-                addToMaterialMap(materialMap, 'Netherite Ingot', equipmentCost.ingot);
-                stepMaterials.push({
-                    name: 'Netherite Ingot',
-                    quantity: equipmentCost.ingot,
-                });
+                expandItemToBaseMaterials(data, 'Netherite Ingot', equipmentCost.ingot, totalMap, new Set());
+                stepAlloysCost.push({ name: 'Netherite Ingot', quantity: equipmentCost.ingot });
             }
             if (equipmentCost.rod > 0) {
-                addToMaterialMap(materialMap, 'Netherite Rod', equipmentCost.rod);
-                stepMaterials.push({
-                    name: 'Netherite Rod',
-                    quantity: equipmentCost.rod,
-                });
+                expandItemToBaseMaterials(data, 'Netherite Rod', equipmentCost.rod, totalMap, new Set());
+                stepAlloysCost.push({ name: 'Netherite Rod', quantity: equipmentCost.rod });
             }
         }
 
@@ -159,27 +201,17 @@ export function calculateMaterialsNeeded(
             alloysName: alloyName,
             equipmentType,
             equipmentCost,
-            alloysCost: stepMaterials,
+            alloysCost: stepAlloysCost,
         });
     }
 
-    // Convert material map to array
-    const totalMaterials = Array.from(materialMap.entries())
-        .map(([name, quantity]) => ({
-            name,
-            quantity,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-    return { steps, totalMaterials };
+    return { steps, totalMaterials: mapToSortedArray(totalMap) };
 }
 
-function addToMaterialMap(map: Map<string, number>, material: string, quantity: number) {
-    const current = map.get(material) || 0;
-    map.set(material, current + quantity);
-}
-
-// Special case: calculate from Netherite equipment to target
+/**
+ * Backward-compatible: calculate from Netherite equipment to target.
+ * Kept for ingots/rods UI.
+ */
 export function calculateFromNetherite(
     data: AlloysData,
     targetAlloy: string,
@@ -195,24 +227,16 @@ export function calculateFromNetherite(
     const steps: AlloysStep[] = [];
     const materialMap = new Map<string, number>();
 
-    // For ingots/rods, just calculate the materials without equipment
+    // For ingots/rods: just calculate the materials without equipment
     if (productType === 'Lingot' || productType === 'Verge') {
         for (let i = 0; i <= targetIdx; i++) {
             const alloyName = alloysNames[i];
-
-            // Get the recipe for this alloy
             const recipe = getAlloyRecipe(data, alloyName);
 
             const stepMaterials: MaterialRequirement[] = [];
-
-            // For each material in the recipe
             for (const material of recipe) {
-                const quantity = material.quantity;
-                addToMaterialMap(materialMap, material.name, quantity);
-                stepMaterials.push({
-                    name: material.name,
-                    quantity,
-                });
+                expandItemToBaseMaterials(data, material.name, material.quantity, materialMap, new Set());
+                stepMaterials.push({ name: material.name, quantity: material.quantity });
             }
 
             steps.push({
@@ -228,38 +252,23 @@ export function calculateFromNetherite(
 
         for (let i = 0; i <= targetIdx; i++) {
             const alloyName = alloysNames[i];
-
-            // Get the recipe for this alloy
             const recipe = getAlloyRecipe(data, alloyName);
 
             const stepMaterials: MaterialRequirement[] = [];
-
-            // For each material in the recipe
             for (const material of recipe) {
-                const quantity = material.quantity;
-                addToMaterialMap(materialMap, material.name, quantity);
-                stepMaterials.push({
-                    name: material.name,
-                    quantity,
-                });
+                expandItemToBaseMaterials(data, material.name, material.quantity, materialMap, new Set());
+                stepMaterials.push({ name: material.name, quantity: material.quantity });
             }
 
-            // Add equipment cost (in terms of the previous equipment, not ingots)
             if (i === 0) {
                 // For the first alloy, we need Netherite equipment
-                stepMaterials.push({
-                    name: `Netherite ${productType}`,
-                    quantity: 1,
-                });
+                stepMaterials.push({ name: `Netherite ${productType}`, quantity: 1 });
                 addToMaterialMap(materialMap, `Netherite ${productType}`, 1);
             } else {
-                // For other alloys, we need the previous alloy's equipment
                 const prevAlloyName = alloysNames[i - 1];
-                stepMaterials.push({
-                    name: `${prevAlloyName} ${productType}`,
-                    quantity: 1,
-                });
-                addToMaterialMap(materialMap, `${prevAlloyName} ${productType}`, 1);
+                const prevEquipmentItem = `${prevAlloyName} ${productType}`;
+                stepMaterials.push({ name: prevEquipmentItem, quantity: 1 });
+                expandItemToBaseMaterials(data, prevEquipmentItem, 1, materialMap, new Set());
             }
 
             steps.push({
@@ -271,13 +280,6 @@ export function calculateFromNetherite(
         }
     }
 
-    // Convert material map to array
-    const totalMaterials = Array.from(materialMap.entries())
-        .map(([name, quantity]) => ({
-            name,
-            quantity,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-    return { steps, totalMaterials };
+    return { steps, totalMaterials: mapToSortedArray(materialMap) };
 }
+
