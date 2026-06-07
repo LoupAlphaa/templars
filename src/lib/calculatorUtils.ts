@@ -93,7 +93,7 @@ function flattenCoolers(data: AlloysData): Record<string, { cooling_speed: numbe
  * Adapt the path / fetch URL to match your project structure.
  */
 export async function loadAlloysData(): Promise<AlloysData> {
-    const response = await fetch('/data/alloys.json');
+    const response = await fetch('/public/alloys.json');
     if (!response.ok) {
         throw new Error(`Failed to load alloys data: ${response.statusText}`);
     }
@@ -275,7 +275,8 @@ function computeResult(
 
     const chain = getProgressionChain(alloys, startName, targetName);
     if (chain.length === 0) return {
-    steps: [], totalMaterials: [],
+    steps: [],
+    totalMaterials: [],
     alloysIngots: []
 };
 
@@ -338,17 +339,21 @@ function computeResult(
         // Record how many ingots of this alloy must be forged.
         alloysIngotsMap.set(alloysName, ingotCount);
 
-        // Accumulate raw (non-alloy) materials into totalMap
+        // Accumulate materials into totalMap.
+        // An ingredient counts as "produced by a previous step" ONLY when it is
+        // part of the current chain (i.e. we forge it ourselves).
+        // Alloy ingredients that are NOT in the chain are required inputs —
+        // e.g. Bronze ingots when the user's starting point is already Bronze.
         const alloy = alloys[alloysName];
         const ingredients = getAlloyIngredients(alloy);
         for (const { name, quantity } of ingredients) {
             const scaledQty = quantity * ingotCount;
-            if (!alloys[name]) {
-                // Base material — add to total
+            if (alloys[name] && chain.includes(name)) {
+                // Produced by a previous step in our chain — skip.
+            } else {
+                // Base material OR an alloy outside the chain → required input.
                 addMaterial(totalMap, name, scaledQty);
             }
-            // If it's an alloy ingredient, it was produced in a previous step —
-            // its raw cost is already captured there.
         }
 
         // Add wood rods for final equipment
