@@ -1,3 +1,5 @@
+import alloysData from '../assets/alloys.json';
+
 // ============================================================
 // calculatorUtils.ts
 // Utility functions for the Alloy Calculator
@@ -103,11 +105,7 @@ function flattenCoolers(data: AlloysData): Record<string, { cooling_speed: numbe
  * Adapt the path / fetch URL to match your project structure.
  */
 export async function loadAlloysData(): Promise<AlloysData> {
-    const response = await fetch('/src/assets/alloys.json');
-    if (!response.ok) {
-        throw new Error(`Failed to load alloys data: ${response.statusText}`);
-    }
-    return response.json() as Promise<AlloysData>;
+    return alloysData as AlloysData;
 }
 
 // ─────────────────────────────────────────────────────────────
