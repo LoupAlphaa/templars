@@ -309,34 +309,46 @@ function computeResult(
     const isLingot = equipmentType === 'Lingot';
     const equipment = isLingot ? null : (equipments[equipmentType] ?? null);
 
-    // For each step, we need to know how many ingots to produce.
-    // The final alloy provides ingots for:
-    //   - the equipment (if any)
-    //   - nothing else (first alloy in chain uses 1 base set of ingredients)
-    // Intermediate alloys are consumed by the next alloy's recipe.
+    // ── Logique de calcul des lingots nécessaires ──────────────
     //
-    // We walk the chain in reverse to propagate counts upward.
+    // Pour upgrader un équipement à chaque palier, le joueur a besoin :
+    //   1. De X lingots de l'alliage COURANT pour forger/upgrader l'équipement
+    //      (equipmentDef.ingot pour CHAQUE étape intermédiaire, pas seulement la finale)
+    //   2. Des lingots d'alliage COURANT consommés par la RECETTE de l'alliage suivant
+    //      (ex: Hardened Steel a besoin de 2× Bronze dans sa recette)
+    //
+    // Donc pour chaque étape i (sauf la dernière) :
+    //   ingotCount[i] = equipIngots (pour upgrader à ce tier)
+    //                 + (quantité consommée par la recette de chain[i+1]) * ingotCount[i+1]
+    //
+    // Pour la dernière étape :
+    //   ingotCount[last] = equipIngots (pour l'équipement final)
 
-    // Step 1: determine how many ingots of the TARGET alloy we need.
-    let targetIngotCount = 1; // default: produce 1 lingot
-    if (equipment) {
-        targetIngotCount = equipment.ingot; // e.g., Helmet = 5 ingots
-    }
+    const equipIngotCount = equipment ? equipment.ingot : 1; // lingots pour 1 équipement
 
-    // Step 2: walk chain in reverse and compute ingot counts per step.
-    // Each alloy in position i might be consumed by alloy at i+1.
+    // On calcule de droite à gauche.
     const ingotCounts: number[] = new Array(chain.length).fill(0);
-    ingotCounts[chain.length - 1] = targetIngotCount;
+    ingotCounts[chain.length - 1] = equipIngotCount;
 
     for (let i = chain.length - 2; i >= 0; i--) {
         const nextAlloyName = chain[i + 1];
         const nextAlloy = alloys[nextAlloyName];
         const ingredients = getAlloyIngredients(nextAlloy);
-        // How many of chain[i] does chain[i+1] need per batch?
+        // Combien de lingots de chain[i] la recette de chain[i+1] consomme par batch ?
         const ingr = ingredients.find((m) => m.name === chain[i]);
-        const perBatch = ingr ? ingr.quantity : 0;
-        ingotCounts[i] = perBatch * ingotCounts[i + 1];
+        const consumedByNextRecipe = (ingr ? ingr.quantity : 0) * ingotCounts[i + 1];
+        // Lingots nécessaires pour upgrader l'équipement à CE palier intermédiaire
+        const consumedByEquipUpgrade = equipment ? equipment.ingot : 0;
+        ingotCounts[i] = consumedByNextRecipe + consumedByEquipUpgrade;
     }
+
+    // equipmentCost par étape :
+    //   - toutes les étapes (intermédiaires ET finale) consomment equipment.ingot lingots
+    //   - seule la dernière consomme les bâtons de bois
+    const equipCostPerStep = (isTarget: boolean) => ({
+        ingot: equipment ? equipment.ingot : 0,
+        rod: isTarget && equipment ? equipment.wood_rod : 0,
+    });
 
     // Step 3: build steps and accumulate total materials.
     const steps: CraftingStep[] = [];
@@ -348,8 +360,7 @@ function computeResult(
         const ingotCount = ingotCounts[i];
         const isTarget = i === chain.length - 1;
 
-        const equipIngots = isTarget && equipment ? equipment.ingot : 0;
-        const equipRods = isTarget && equipment ? equipment.wood_rod : 0;
+        const { ingot: equipIngots, rod: equipRods } = equipCostPerStep(isTarget);
 
         const step = buildStep(
             alloys,
@@ -377,38 +388,24 @@ function computeResult(
         alloysIngotsMap.set(alloysName, ingotCount);
 
         // Accumulate materials into totalMap.
-        // Important: if an ingredient is itself an alloy, we must expand it recursively
-        // into its base materials (so intermediate alloy requirements are counted).
+        // Règle : un ingrédient est "produit par cette chaîne" uniquement s'il est dans chain.
+        // Les alliages hors-chain (ex: Bronze quand on part du Bronze) sont des inputs requis.
         const alloy = alloys[alloysName];
         const ingredients = getAlloyIngredients(alloy);
 
-        const expandIngredient = (ingredientName: string, qty: number) => {
-            const ingAlloy = alloys[ingredientName];
-            if (!ingAlloy) {
-                addMaterial(totalMap, ingredientName, qty);
-                return;
-            }
-
-            // If the alloy is in the current progression chain, it will be crafted by steps.
-            // But its recipe may require other alloys outside the chain, so we still need to expand.
-            // To avoid double counting, we only expand into base materials of ingredients that
-            // are not produced by previous steps in the chain.
-            //
-            // Rule simplification: if the alloy is in-chain, do NOT add the alloy itself as required input,
-            // instead expand its recipe ingredients (recursively) into totalMap.
-            const subIngredients = getAlloyIngredients(ingAlloy);
-            for (const { name: subName, quantity: subQty } of subIngredients) {
-                expandIngredient(subName, qty * subQty);
-            }
-        };
-
         for (const { name, quantity } of ingredients) {
             const scaledQty = quantity * ingotCount;
-            expandIngredient(name, scaledQty);
+            if (alloys[name] && chain.includes(name)) {
+                // Produit par une étape précédente de la chaîne — ne pas doubler.
+            } else {
+                // Matériau brut OU alliage extérieur à la chaîne → input requis.
+                addMaterial(totalMap, name, scaledQty);
+            }
         }
 
-
-        // Add wood rods for final equipment
+        // Lingots d'équipement à chaque étape intermédiaire : déjà comptés dans ingotCount
+        // (ils sont inclus dans le total des lingots produits à ce tier).
+        // Les bâtons de bois pour l'équipement final :
         if (isTarget && equipment && equipment.wood_rod > 0) {
             addMaterial(totalMap, 'Wood rod', equipment.wood_rod);
         }
