@@ -239,7 +239,28 @@ export default function Calculator() {
                                                 <span className="item-icon">{getItemIcon(material.name)}</span>
                                                 <span className="material-name">{material.name}</span>
                                             </span>
-                                            <span className="material-quantity">{material.quantity}</span>
+                                            <span className="material-quantity">
+                                                {(() => {
+                                                    const stackSize = 64;
+                                                    const stacks = Math.floor(material.quantity / stackSize);
+                                                    const rest = material.quantity % stackSize;
+
+                                                    if( material.name === 'Levels' ) {
+                                                        return (
+                                                            material.quantity
+                                                        )
+                                                    }
+
+                                                    return (
+                                                        <>
+                                                            {stacks > 0 ? `${stacks} stack${stacks > 1 ? 's' : ''}` : ''}
+                                                            {rest > 0 && stacks == 0 ? `${rest}` : rest > 0 ? ` + ${rest}` : ''}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </span>
+
+
                                         </div>
                                     ))}
                                 </div>

@@ -21,7 +21,6 @@ export interface AlloyDefinition {
     temperature: number;
     time: number;
     success_rate: number;
-    level: number;
 }
 
 export interface EquipmentDefinition {
@@ -32,7 +31,12 @@ export interface EquipmentDefinition {
 export interface Material {
     name: string;
     quantity: number;
+    /** Optionnel: niveau de l’alliage si le matériau correspond à un alliage (pour affichage) */
+    // level?: number;
 }
+
+// (préparé pour la conversion stacks/64 si besoin)
+
 
 export interface CraftingStep {
     /** Name of the alloy being crafted at this step */
@@ -52,7 +56,6 @@ export interface CraftingStep {
     /** Base crafting time (before cooling factor) */
     time: number;
     success_rate: number;
-    level: number;
 
     /** Combustibles compatibles (température >= temperature) */
     combustiblesPossible: { name: string; temperature: number }[];
@@ -116,7 +119,6 @@ export async function loadAlloysData(): Promise<AlloysData> {
 export function getAlloysNames(data: AlloysData): string[] {
     const alloys = flattenAlloys(data);
     return Object.entries(alloys)
-        .sort(([, a], [, b]) => a.level - b.level)
         .map(([name]) => name);
 }
 
@@ -146,8 +148,14 @@ function addMaterial(map: Map<string, number>, name: string, qty: number): void 
 }
 
 function mapToList(map: Map<string, number>): Material[] {
-    return Array.from(map.entries()).map(([name, quantity]) => ({ name, quantity }));
+    return Array.from(map.entries()).map(([name, quantity]) => {
+        return {
+            name,
+            quantity,
+        };
+    });
 }
+
 
 // ─────────────────────────────────────────────────────────────
 // Internal: get alloy items as a flat list of { name, quantity }
@@ -170,7 +178,6 @@ function getProgressionChain(
     targetName: string
 ): string[] {
     const sorted = Object.entries(alloys)
-        .sort(([, a], [, b]) => a.level - b.level)
         .map(([name]) => name);
 
     const targetIdx = sorted.indexOf(targetName);
@@ -269,8 +276,7 @@ function buildStep(
         refroidisseursPossible: [], // rempli dans computeResult
         temperature: alloy.temperature,
         time: alloy.time,
-        success_rate: alloy.success_rate,
-        level: alloy.level,
+        success_rate: alloy.success_rate
     };
 }
 
