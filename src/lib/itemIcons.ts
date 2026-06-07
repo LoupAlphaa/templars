@@ -22,7 +22,7 @@ export const ITEM_ICONS: Record<string, string> = {
     'Diamond': '💎',
     'Obsidian': '⬛',
     'Netherite Ingot': '◼️',
-    'Nethe brick': '🔴',
+    'Netherack brick': '🔴',
     'Amethyst cluster': '🟣',
     'Ender pearl': '⚫',
     'Nether star': '⭐',
