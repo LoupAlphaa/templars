@@ -249,7 +249,7 @@ export default function Calculator() {
                             // both further reduced by what higher-tier owned already covers.
                             const effectiveMax = (idx: number): number => {
                                 const rawMax = result.alloysIngotsMax[chain[idx]];
-                                const baseCap = idx === lastIdx ? rawMax - 1 : rawMax;
+                                const baseCap = idx === lastIdx && calculatorMode === 'equipment' ? rawMax - 1 : rawMax;
                                 return Math.max(0, baseCap - consumedByHigher(idx));
                             };
 
