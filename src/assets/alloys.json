@@ -120,9 +120,9 @@
                         "Levels": 2
                     }
                 ],
-                "temperature": 900,
-                "time": 15,
-                "success_rate": 0.9
+                "temperature": 2500,
+                "time": 60,
+                "success_rate": 0.6
             }
         }
     ],
