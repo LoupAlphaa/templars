@@ -229,12 +229,59 @@
     margin-top: 40px;
 }
 
+/* Two-column layout for the summary panels */
+.summary-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
 .materials-summary {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(178, 34, 34, 0.15);
     border-radius: 8px;
     padding: 25px;
     width: 100%;
+}
+
+/* Lingots à forger panel — orange/amber accent to differentiate */
+.alloys-ingots-summary {
+    border-color: rgba(200, 100, 20, 0.25);
+    background: rgba(200, 100, 20, 0.03);
+}
+
+.forge-badge {
+    background: #c86414 !important;
+}
+
+.alloy-ingot-item {
+    border-left-color: #c86414 !important;
+    background: rgba(200, 100, 20, 0.08) !important;
+}
+
+.alloy-ingot-item:hover {
+    background: rgba(200, 100, 20, 0.15) !important;
+}
+
+.alloy-quantity {
+    background: #c86414 !important;
+    box-shadow: 0 2px 8px rgba(200, 100, 20, 0.3) !important;
+}
+
+.forge-step-number {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(200, 100, 20, 0.3);
+    border: 1px solid rgba(200, 100, 20, 0.5);
+    color: #f0a060;
+    font-size: 0.7em;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .steps-section {
@@ -587,6 +634,10 @@
         flex-direction: column;
     }
 
+    .summary-columns {
+        grid-template-columns: 1fr;
+    }
+
     .step-content {
         grid-template-columns: 1fr;
     }
@@ -649,4 +700,3 @@
         border-left-color: #b22222;
     }
 }
-

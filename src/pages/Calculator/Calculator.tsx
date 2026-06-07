@@ -44,28 +44,17 @@ export default function Calculator() {
         if (!data) return;
 
         if (calculatorMode === 'ingots') {
-            // For ingots: get recipe for the selected alloy and multiply by quantity
-            const recipe = Array.isArray(data.alloys[0][selectedAlloy]?.items)
-                ? data.alloys[0][selectedAlloy].items[0]
-                : {};
-
-            const materialMap = new Map<string, number>();
-
-            Object.entries(recipe).forEach(([item, qty]) => {
-                const quantity = (qty as number) * ingotQuantity;
-                materialMap.set(item, (materialMap.get(item) || 0) + quantity);
-            });
-
-            const totalMaterials = Array.from(materialMap.entries())
-                .map(([name, quantity]) => ({
-                    name,
-                    quantity,
-                }))
-                .sort((a, b) => a.name.localeCompare(b.name));
-
+            // BUGFIX: pour un lingot seul, il faut aussi tenir compte des alliages précédents.
+            // => on calcule comme une progression equipment mais pour le produit 'Lingot'.
+            // On utilise le nouvel utilitaire de calcul "calculateMaterialsNeeded" en démarrant depuis Netherite.
+            const calc = calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot');
+            // multiplier par la quantité demandée.
+            const scaledTotal = calc.totalMaterials.map((m) => ({ ...m, quantity: m.quantity * ingotQuantity }));
+            const scaledIngots = calc.alloysIngots.map((m) => ({ ...m, quantity: m.quantity * ingotQuantity }));
             setResult({
                 steps: [],
-                totalMaterials,
+                totalMaterials: scaledTotal,
+                alloysIngots: scaledIngots,
             });
         } else {
             // For equipment
@@ -224,25 +213,50 @@ export default function Calculator() {
 
                 {result && result.totalMaterials.length > 0 && (
                     <div className="calculator-results">
-                        <div className="materials-summary">
-                            <div className="summary-header">
-                                <h2>Résumé des matériaux</h2>
-                                <span className="product-badge">
-                                    {calculatorMode === 'ingots' && `⚱️ Lingots x${ingotQuantity} de ${selectedAlloy}`}
-                                    {calculatorMode === 'equipment' && `${getItemIcon(selectedEquipmentType)} ${selectedEquipmentType}s`}
-                                </span>
+                        <div className="summary-columns">
+                            {/* Matériaux bruts */}
+                            <div className="materials-summary">
+                                <div className="summary-header">
+                                    <h2>Matériaux bruts</h2>
+                                    <span className="product-badge">
+                                        {calculatorMode === 'ingots' && `⚱️ Lingots x${ingotQuantity} de ${selectedAlloy}`}
+                                        {calculatorMode === 'equipment' && `${getItemIcon(selectedEquipmentType)} ${selectedEquipmentType}s`}
+                                    </span>
+                                </div>
+                                <div className="materials-list">
+                                    {result.totalMaterials.map((material, idx) => (
+                                        <div key={idx} className="material-item">
+                                            <span className="material-content">
+                                                <span className="item-icon">{getItemIcon(material.name)}</span>
+                                                <span className="material-name">{material.name}</span>
+                                            </span>
+                                            <span className="material-quantity">{material.quantity}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="materials-list">
-                                {result.totalMaterials.map((material, idx) => (
-                                    <div key={idx} className="material-item">
-                                        <span className="material-content">
-                                            <span className="item-icon">{getItemIcon(material.name)}</span>
-                                            <span className="material-name">{material.name}</span>
-                                        </span>
-                                        <span className="material-quantity">{material.quantity}</span>
+
+                            {/* Lingots d'alliages à forger */}
+                            {result.alloysIngots.length > 0 && (
+                                <div className="materials-summary alloys-ingots-summary">
+                                    <div className="summary-header">
+                                        <h2>Lingots à forger</h2>
+                                        <span className="product-badge forge-badge">🔥 Par ordre de forge</span>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="materials-list">
+                                        {result.alloysIngots.map((ingot, idx) => (
+                                            <div key={idx} className="material-item alloy-ingot-item">
+                                                <span className="material-content">
+                                                    <span className="forge-step-number">{idx + 1}</span>
+                                                    <span className="item-icon">{getItemIcon(ingot.name)}</span>
+                                                    <span className="material-name">{ingot.name}</span>
+                                                </span>
+                                                <span className="material-quantity alloy-quantity">{ingot.quantity}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {calculatorMode === 'equipment' && result.steps.length > 0 && (

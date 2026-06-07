@@ -135,39 +135,39 @@
         {
             "Pickaxe":{
                 "ingot": 3,
-                "rod": 2
+                "wood_rod": 2
             },
             "Axe":{
                 "ingot": 3,
-                "rod": 2
+                "wood_rod": 2
             },
             "Shovel":{
                 "ingot": 1,
-                "rod": 2
+                "wood_rod": 2
             },
             "Sword":{
                 "ingot": 2,
-                "rod": 1
+                "wood_rod": 1
             },
             "Hoe":{
                 "ingot": 2,
-                "rod": 2
+                "wood_rod": 2
             },
             "Helmet":{
                 "ingot": 5,
-                "rod": 0
+                "wood_rod": 0
             },
             "Chestplate":{
                 "ingot": 8,
-                "rod": 0
+                "wood_rod": 0
             },
             "Leggings":{
                 "ingot": 7,
-                "rod": 0
+                "wood_rod": 0
             },
             "Boots":{
                 "ingot": 4,
-                "rod": 0
+                "wood_rod": 0
             }
         }
     ]

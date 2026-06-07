@@ -1,285 +1,423 @@
-// Types for calculator
+// ============================================================
+// calculatorUtils.ts
+// Utility functions for the Alloy Calculator
+// ============================================================
+
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
+
 export interface AlloysData {
-    combustibles: any[];
-    alloys: any[];
-    cooler: any[];
-    equipments: any[];
+    combustibles: Record<string, { temperature: number }>[];
+    alloys: Record<string, AlloyDefinition>[];
+    cooler: Record<string, { cooling_speed: number }>[];
+    equipments: Record<string, EquipmentDefinition>[];
 }
 
-export interface MaterialRequirement {
+export interface AlloyDefinition {
+    items: Record<string, number>[];
+    temperature: number;
+    time: number;
+    success_rate: number;
+    level: number;
+}
+
+export interface EquipmentDefinition {
+    ingot: number;
+    wood_rod: number;
+}
+
+export interface Material {
     name: string;
     quantity: number;
 }
 
-export interface CalculationResult {
-    steps: AlloysStep[];
-    totalMaterials: MaterialRequirement[];
-}
-
-export interface AlloysStep {
+export interface CraftingStep {
+    /** Name of the alloy being crafted at this step */
     alloysName: string;
-    equipmentType: string;
-    equipmentCost: EquipmentCost;
-    alloysCost: MaterialRequirement[];
+    /** How many ingots of this alloy are needed for the next step */
+    ingotCount: number;
+    /** Raw materials needed to forge this alloy (excluding previous-tier ingots) */
+    alloysCost: Material[];
+    /** Equipment pieces crafted from this alloy */
+    equipmentCost: {
+        ingot: number;
+        rod: number;
+    };
+    /** Combustible recommended to reach this alloy's required temperature */
+    combustible: {
+        name: string;
+        temperature: number;
+    } | null;
+    /** Alloy metadata */
+    temperature: number;
+    time: number;
+    success_rate: number;
+    level: number;
 }
 
-export interface EquipmentCost {
-    ingot: number;
-    rod: number;
+export interface CalculationResult {
+    steps: CraftingStep[];
+    /** Raw (non-alloy) materials needed in total */
+    totalMaterials: Material[];
+    /** Alloy ingots that must be forged at each step, in progression order */
+    alloysIngots: Material[];
 }
 
-// Load alloys data
-export async function loadAlloysData(): Promise<AlloysData> {
-    const response = await fetch('/alloys.json');
-    return response.json();
+// ─────────────────────────────────────────────────────────────
+// Helpers to flatten the nested array-of-objects JSON format
+// ─────────────────────────────────────────────────────────────
+
+function flattenAlloys(data: AlloysData): Record<string, AlloyDefinition> {
+    return Object.assign({}, ...data.alloys);
 }
 
-// Get all alloy names in order
-export function getAlloysNames(data: AlloysData): string[] {
-    const alloysObj = data.alloys[0];
-    return Object.keys(alloysObj).sort((a, b) => {
-        const levelA = alloysObj[a].level || 0;
-        const levelB = alloysObj[b].level || 0;
-        return levelA - levelB;
-    });
+function flattenCombustibles(data: AlloysData): Record<string, { temperature: number }> {
+    return Object.assign({}, ...data.combustibles);
 }
 
-// Get all equipment types
-export function getEquipmentTypes(): string[] {
-    return ['Helmet', 'Chestplate', 'Leggings', 'Boots', 'Sword', 'Pickaxe', 'Axe', 'Shovel', 'Hoe'];
+function flattenEquipments(data: AlloysData): Record<string, EquipmentDefinition> {
+    return Object.assign({}, ...data.equipments);
 }
 
-// Get all product types (equipment + ingots)
-export function getProductTypes(): string[] {
-    return ['Lingot', 'Verge', 'Helmet', 'Chestplate', 'Leggings', 'Boots', 'Sword', 'Pickaxe', 'Axe', 'Shovel', 'Hoe'];
+function flattenCoolers(data: AlloysData): Record<string, { cooling_speed: number }> {
+    return Object.assign({}, ...data.cooler);
 }
 
-// Get alloy recipe items (raw materials)
-export function getAlloyRecipe(data: AlloysData, alloyName: string): MaterialRequirement[] {
-    const alloysObj = data.alloys[0];
-    const alloy = alloysObj[alloyName];
-
-    if (!alloy || !alloy.items || alloy.items.length === 0) {
-        return [];
-    }
-
-    const items = alloy.items[0];
-    return Object.entries(items).map(([name, quantity]) => ({
-        name,
-        quantity: quantity as number,
-    }));
-}
-
-// Get equipment cost
-export function getEquipmentCost(data: AlloysData, equipmentType: string): EquipmentCost {
-    const equipmentsObj = data.equipments[0];
-    return equipmentsObj[equipmentType] || { ingot: 0, rod: 0 };
-}
-
-function addToMaterialMap(map: Map<string, number>, material: string, quantity: number) {
-    const current = map.get(material) || 0;
-    map.set(material, current + quantity);
-}
-
-function mapToSortedArray(materialMap: Map<string, number>): MaterialRequirement[] {
-    return Array.from(materialMap.entries())
-        .map(([name, quantity]) => ({ name, quantity }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-function isAlloyName(data: AlloysData, itemName: string): boolean {
-    const alloysObj = data.alloys[0];
-    return Boolean(alloysObj?.[itemName]);
-}
+// ─────────────────────────────────────────────────────────────
+// Public API: loadAlloysData
+// ─────────────────────────────────────────────────────────────
 
 /**
- * Expand an "item" into its base materials recursively.
- * - If itemName is an alloy: expand its recipe.
- * - If itemName is not an alloy: treat as a base material.
- *
- * Special case: Netherite Ingot / Netherite Rod are terminal base items.
+ * Loads the alloys JSON data.
+ * Adapt the path / fetch URL to match your project structure.
  */
-function expandItemToBaseMaterials(
-    data: AlloysData,
-    itemName: string,
-    quantity: number,
-    materialMap: Map<string, number>,
-    visitStack: Set<string>
-) {
-    const terminalNetherite = itemName === 'Netherite Ingot' || itemName === 'Netherite Rod' || itemName.startsWith('Netherite ');
-
-    if (quantity <= 0) return;
-
-    if (terminalNetherite || !isAlloyName(data, itemName)) {
-        addToMaterialMap(materialMap, itemName, quantity);
-        return;
+export async function loadAlloysData(): Promise<AlloysData> {
+    const response = await fetch('/data/alloys.json');
+    if (!response.ok) {
+        throw new Error(`Failed to load alloys data: ${response.statusText}`);
     }
-
-    // Prevent infinite loops if data is inconsistent
-    if (visitStack.has(itemName)) {
-        addToMaterialMap(materialMap, itemName, quantity);
-        return;
-    }
-
-    visitStack.add(itemName);
-    const recipe = getAlloyRecipe(data, itemName);
-    for (const material of recipe) {
-        expandItemToBaseMaterials(data, material.name, material.quantity * quantity, materialMap, visitStack);
-    }
-    visitStack.delete(itemName);
+    return response.json() as Promise<AlloysData>;
 }
 
-// Calculate all materials needed to go from one alloy to another (equipment mode)
+// ─────────────────────────────────────────────────────────────
+// Public API: getAlloysNames
+// Returns the alloy names sorted by level (ascending).
+// ─────────────────────────────────────────────────────────────
+
+export function getAlloysNames(data: AlloysData): string[] {
+    const alloys = flattenAlloys(data);
+    return Object.entries(alloys)
+        .sort(([, a], [, b]) => a.level - b.level)
+        .map(([name]) => name);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal: find the cheapest combustible that meets a temperature
+// ─────────────────────────────────────────────────────────────
+
+function pickCombustible(
+    combustibles: Record<string, { temperature: number }>,
+    requiredTemp: number
+): { name: string; temperature: number } | null {
+    const candidates = Object.entries(combustibles)
+        .filter(([, c]) => c.temperature >= requiredTemp)
+        .sort(([, a], [, b]) => a.temperature - b.temperature);
+
+    if (candidates.length === 0) return null;
+    const [name, { temperature }] = candidates[0];
+    return { name, temperature };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal: add a quantity to a material list (mutates the map)
+// ─────────────────────────────────────────────────────────────
+
+function addMaterial(map: Map<string, number>, name: string, qty: number): void {
+    map.set(name, (map.get(name) ?? 0) + qty);
+}
+
+function mapToList(map: Map<string, number>): Material[] {
+    return Array.from(map.entries()).map(([name, quantity]) => ({ name, quantity }));
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal: get alloy items as a flat list of { name, quantity }
+// ─────────────────────────────────────────────────────────────
+
+function getAlloyIngredients(alloy: AlloyDefinition): Material[] {
+    return alloy.items.flatMap((itemRecord) =>
+        Object.entries(itemRecord).map(([name, quantity]) => ({ name, quantity }))
+    );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal: resolve what alloys are predecessors of a target,
+// in progression order (Bronze → Hardened steel → … → target).
+// ─────────────────────────────────────────────────────────────
+
+function getProgressionChain(
+    alloys: Record<string, AlloyDefinition>,
+    startName: string | null, // null means "Netherite" (the very beginning)
+    targetName: string
+): string[] {
+    const sorted = Object.entries(alloys)
+        .sort(([, a], [, b]) => a.level - b.level)
+        .map(([name]) => name);
+
+    const targetIdx = sorted.indexOf(targetName);
+    if (targetIdx === -1) return [];
+
+    const startIdx = startName === null ? -1 : sorted.indexOf(startName);
+
+    // Return every alloy from (startIdx+1) to targetIdx inclusive.
+    return sorted.slice(startIdx + 1, targetIdx + 1);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal: for a single alloy step, compute how many raw
+// materials of each kind are needed to produce `count` ingots,
+// recursively expanding any alloy-ingredient into its own chain.
+//
+// Returns the flat map of base (non-alloy) materials.
+// ─────────────────────────────────────────────────────────────
+
+function expandAlloyCost(
+    alloys: Record<string, AlloyDefinition>,
+    alloysChain: string[], // the progression up to the current alloy
+    alloysName: string,
+    count: number,
+    totals: Map<string, number>
+): void {
+    const alloy = alloys[alloysName];
+    if (!alloy) return;
+
+    const ingredients = getAlloyIngredients(alloy);
+
+    for (const { name, quantity } of ingredients) {
+        const scaledQty = quantity * count;
+        if (alloys[name]) {
+            // This ingredient is itself an alloy – recurse only if it's in our chain
+            expandAlloyCost(alloys, alloysChain, name, scaledQty, totals);
+        } else {
+            addMaterial(totals, name, scaledQty);
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal: build one CraftingStep for a given alloy name,
+// given how many ingots of it we need and the equipment cost.
+// ─────────────────────────────────────────────────────────────
+
+function buildStep(
+    alloys: Record<string, AlloyDefinition>,
+    combustibles: Record<string, { temperature: number }>,
+    alloysChain: string[],
+    alloysName: string,
+    ingotCount: number,
+    equipmentIngots: number,
+    equipmentRods: number
+): CraftingStep {
+    const alloy = alloys[alloysName];
+    const ingredients = getAlloyIngredients(alloy);
+
+    // For the step display we only show direct ingredients (scaled by ingotCount),
+    // but we expand alloy-type ingredients into their base materials for totals later.
+    const directCost: Material[] = ingredients.map(({ name, quantity }) => ({
+        name,
+        quantity: quantity * ingotCount,
+    }));
+
+    // Raw base materials cost (non-alloy ingredients only, scaled)
+    const rawMap = new Map<string, number>();
+    for (const { name, quantity } of ingredients) {
+        const scaledQty = quantity * ingotCount;
+        if (alloys[name]) {
+            // An alloy ingredient — expand it recursively into base materials
+            expandAlloyCost(alloys, alloysChain, name, scaledQty, rawMap);
+        } else {
+            addMaterial(rawMap, name, scaledQty);
+        }
+    }
+
+    const combustible = pickCombustible(combustibles, alloy.temperature);
+
+    return {
+        alloysName,
+        ingotCount,
+        alloysCost: directCost,
+        equipmentCost: {
+            ingot: equipmentIngots,
+            rod: equipmentRods,
+        },
+        combustible,
+        temperature: alloy.temperature,
+        time: alloy.time,
+        success_rate: alloy.success_rate,
+        level: alloy.level,
+    };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Internal: compute full result for a given progression
+// ─────────────────────────────────────────────────────────────
+
+function computeResult(
+    data: AlloysData,
+    startName: string | null,
+    targetName: string,
+    equipmentType: string | 'Lingot'
+): CalculationResult {
+    const alloys = flattenAlloys(data);
+    const combustibles = flattenCombustibles(data);
+    const equipments = flattenEquipments(data);
+
+    const chain = getProgressionChain(alloys, startName, targetName);
+    if (chain.length === 0) return {
+    steps: [], totalMaterials: [],
+    alloysIngots: []
+};
+
+    const isLingot = equipmentType === 'Lingot';
+    const equipment = isLingot ? null : (equipments[equipmentType] ?? null);
+
+    // For each step, we need to know how many ingots to produce.
+    // The final alloy provides ingots for:
+    //   - the equipment (if any)
+    //   - nothing else (first alloy in chain uses 1 base set of ingredients)
+    // Intermediate alloys are consumed by the next alloy's recipe.
+    //
+    // We walk the chain in reverse to propagate counts upward.
+
+    // Step 1: determine how many ingots of the TARGET alloy we need.
+    let targetIngotCount = 1; // default: produce 1 lingot
+    if (equipment) {
+        targetIngotCount = equipment.ingot; // e.g., Helmet = 5 ingots
+    }
+
+    // Step 2: walk chain in reverse and compute ingot counts per step.
+    // Each alloy in position i might be consumed by alloy at i+1.
+    const ingotCounts: number[] = new Array(chain.length).fill(0);
+    ingotCounts[chain.length - 1] = targetIngotCount;
+
+    for (let i = chain.length - 2; i >= 0; i--) {
+        const nextAlloyName = chain[i + 1];
+        const nextAlloy = alloys[nextAlloyName];
+        const ingredients = getAlloyIngredients(nextAlloy);
+        // How many of chain[i] does chain[i+1] need per batch?
+        const ingr = ingredients.find((m) => m.name === chain[i]);
+        const perBatch = ingr ? ingr.quantity : 0;
+        ingotCounts[i] = perBatch * ingotCounts[i + 1];
+    }
+
+    // Step 3: build steps and accumulate total materials.
+    const steps: CraftingStep[] = [];
+    const totalMap = new Map<string, number>();
+    const alloysIngotsMap = new Map<string, number>();
+
+    for (let i = 0; i < chain.length; i++) {
+        const alloysName = chain[i];
+        const ingotCount = ingotCounts[i];
+        const isTarget = i === chain.length - 1;
+
+        const equipIngots = isTarget && equipment ? equipment.ingot : 0;
+        const equipRods = isTarget && equipment ? equipment.wood_rod : 0;
+
+        const step = buildStep(
+            alloys,
+            combustibles,
+            chain.slice(0, i + 1),
+            alloysName,
+            ingotCount,
+            equipIngots,
+            equipRods
+        );
+        steps.push(step);
+
+        // Record how many ingots of this alloy must be forged.
+        alloysIngotsMap.set(alloysName, ingotCount);
+
+        // Accumulate raw (non-alloy) materials into totalMap
+        const alloy = alloys[alloysName];
+        const ingredients = getAlloyIngredients(alloy);
+        for (const { name, quantity } of ingredients) {
+            const scaledQty = quantity * ingotCount;
+            if (!alloys[name]) {
+                // Base material — add to total
+                addMaterial(totalMap, name, scaledQty);
+            }
+            // If it's an alloy ingredient, it was produced in a previous step —
+            // its raw cost is already captured there.
+        }
+
+        // Add wood rods for final equipment
+        if (isTarget && equipment && equipment.wood_rod > 0) {
+            addMaterial(totalMap, 'Wood rod', equipment.wood_rod);
+        }
+    }
+
+    // Build alloysIngots list in chain order (lowest tier first → target last)
+    const alloysIngots: Material[] = chain.map((name) => ({
+        name,
+        quantity: alloysIngotsMap.get(name) ?? 0,
+    }));
+
+    return {
+        steps,
+        totalMaterials: mapToList(totalMap).sort((a, b) => b.quantity - a.quantity),
+        alloysIngots,
+    };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Public API: calculateFromNetherite
+// Start from Netherite (no prior equipment) → target alloy
+// ─────────────────────────────────────────────────────────────
+
+export function calculateFromNetherite(
+    data: AlloysData,
+    targetAlloy: string,
+    equipmentType: string
+): CalculationResult {
+    return computeResult(data, null, targetAlloy, equipmentType);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Public API: calculateMaterialsNeeded
+// Start from a specific alloy (you already have that tier equipment)
+// and calculate what you still need to reach the target.
+// Also used for lingot-only calculations (pass equipmentType = 'Lingot').
+// ─────────────────────────────────────────────────────────────
+
 export function calculateMaterialsNeeded(
     data: AlloysData,
     startAlloy: string,
     targetAlloy: string,
     equipmentType: string
 ): CalculationResult {
-    const alloysNames = getAlloysNames(data);
-    const startIdx = alloysNames.indexOf(startAlloy);
-    const targetIdx = alloysNames.indexOf(targetAlloy);
-
-    if (startIdx === -1 || targetIdx === -1 || startIdx >= targetIdx) {
-        return { steps: [], totalMaterials: [] };
-    }
-
-    const steps: AlloysStep[] = [];
-    const totalMap = new Map<string, number>();
-    const equipmentCost = getEquipmentCost(data, equipmentType);
-
-    // For each step alloy from start to target
-    for (let i = startIdx; i <= targetIdx; i++) {
-        const alloyName = alloysNames[i];
-
-        // If not the starting alloy, we need the previous alloy's equipment
-        const stepAlloysCost: MaterialRequirement[] = [];
-
-        if (i > startIdx) {
-            const prevAlloyName = alloysNames[i - 1];
-            const prevEquipmentItem = `${prevAlloyName} ${equipmentType}`;
-            // This is an item that must be crafted => expand it
-            expandItemToBaseMaterials(data, prevEquipmentItem, 1, totalMap, new Set());
-            stepAlloysCost.push({ name: prevEquipmentItem, quantity: 1 });
-        }
-
-        // Base recipe materials for current alloy
-        const recipe = getAlloyRecipe(data, alloyName);
-        for (const material of recipe) {
-            // Material may itself be an alloy => expand into base materials
-            expandItemToBaseMaterials(data, material.name, material.quantity, totalMap, new Set());
-            stepAlloysCost.push({ name: material.name, quantity: material.quantity });
-        }
-
-        // Equipment cost (ingots/rods) needed to craft the previous alloy equipment
-        if (i > startIdx) {
-            const prevAlloyName = alloysNames[i - 1];
-
-            if (equipmentCost.ingot > 0) {
-                const prevIngotItem = `${prevAlloyName} Ingot`;
-                expandItemToBaseMaterials(data, prevIngotItem, equipmentCost.ingot, totalMap, new Set());
-                stepAlloysCost.push({ name: prevIngotItem, quantity: equipmentCost.ingot });
-            }
-            if (equipmentCost.rod > 0) {
-                const prevRodItem = `${prevAlloyName} Rod`;
-                expandItemToBaseMaterials(data, prevRodItem, equipmentCost.rod, totalMap, new Set());
-                stepAlloysCost.push({ name: prevRodItem, quantity: equipmentCost.rod });
-            }
-        } else {
-            // Starting alloy: need Netherite materials to build the first equipment layer
-            if (equipmentCost.ingot > 0) {
-                expandItemToBaseMaterials(data, 'Netherite Ingot', equipmentCost.ingot, totalMap, new Set());
-                stepAlloysCost.push({ name: 'Netherite Ingot', quantity: equipmentCost.ingot });
-            }
-            if (equipmentCost.rod > 0) {
-                expandItemToBaseMaterials(data, 'Netherite Rod', equipmentCost.rod, totalMap, new Set());
-                stepAlloysCost.push({ name: 'Netherite Rod', quantity: equipmentCost.rod });
-            }
-        }
-
-        steps.push({
-            alloysName: alloyName,
-            equipmentType,
-            equipmentCost,
-            alloysCost: stepAlloysCost,
-        });
-    }
-
-    return { steps, totalMaterials: mapToSortedArray(totalMap) };
+    const startName = startAlloy === 'Netherite' ? null : startAlloy;
+    return computeResult(data, startName, targetAlloy, equipmentType);
 }
 
-/**
- * Backward-compatible: calculate from Netherite equipment to target.
- * Kept for ingots/rods UI.
- */
-export function calculateFromNetherite(
-    data: AlloysData,
-    targetAlloy: string,
-    productType: string
-): CalculationResult {
-    const alloysNames = getAlloysNames(data);
-    const targetIdx = alloysNames.indexOf(targetAlloy);
+// ─────────────────────────────────────────────────────────────
+// Public API: getCombustibles
+// Returns all combustibles sorted by temperature ascending.
+// ─────────────────────────────────────────────────────────────
 
-    if (targetIdx === -1) {
-        return { steps: [], totalMaterials: [] };
-    }
-
-    const steps: AlloysStep[] = [];
-    const materialMap = new Map<string, number>();
-
-    // For ingots/rods: just calculate the materials without equipment
-    if (productType === 'Lingot' || productType === 'Verge') {
-        for (let i = 0; i <= targetIdx; i++) {
-            const alloyName = alloysNames[i];
-            const recipe = getAlloyRecipe(data, alloyName);
-
-            const stepMaterials: MaterialRequirement[] = [];
-            for (const material of recipe) {
-                expandItemToBaseMaterials(data, material.name, material.quantity, materialMap, new Set());
-                stepMaterials.push({ name: material.name, quantity: material.quantity });
-            }
-
-            steps.push({
-                alloysName: alloyName,
-                equipmentType: productType,
-                equipmentCost: { ingot: 0, rod: 0 },
-                alloysCost: stepMaterials,
-            });
-        }
-    } else {
-        // For equipment, include equipment costs
-        const equipmentCost = getEquipmentCost(data, productType);
-
-        for (let i = 0; i <= targetIdx; i++) {
-            const alloyName = alloysNames[i];
-            const recipe = getAlloyRecipe(data, alloyName);
-
-            const stepMaterials: MaterialRequirement[] = [];
-            for (const material of recipe) {
-                expandItemToBaseMaterials(data, material.name, material.quantity, materialMap, new Set());
-                stepMaterials.push({ name: material.name, quantity: material.quantity });
-            }
-
-            if (i === 0) {
-                // For the first alloy, we need Netherite equipment
-                stepMaterials.push({ name: `Netherite ${productType}`, quantity: 1 });
-                addToMaterialMap(materialMap, `Netherite ${productType}`, 1);
-            } else {
-                const prevAlloyName = alloysNames[i - 1];
-                const prevEquipmentItem = `${prevAlloyName} ${productType}`;
-                stepMaterials.push({ name: prevEquipmentItem, quantity: 1 });
-                expandItemToBaseMaterials(data, prevEquipmentItem, 1, materialMap, new Set());
-            }
-
-            steps.push({
-                alloysName: alloyName,
-                equipmentType: productType,
-                equipmentCost,
-                alloysCost: stepMaterials,
-            });
-        }
-    }
-
-    return { steps, totalMaterials: mapToSortedArray(materialMap) };
+export function getCombustibles(data: AlloysData): { name: string; temperature: number }[] {
+    return Object.entries(flattenCombustibles(data))
+        .map(([name, { temperature }]) => ({ name, temperature }))
+        .sort((a, b) => a.temperature - b.temperature);
 }
 
+// ─────────────────────────────────────────────────────────────
+// Public API: getCoolers
+// Returns all coolers sorted by cooling_speed descending.
+// ─────────────────────────────────────────────────────────────
+
+export function getCoolers(data: AlloysData): { name: string; cooling_speed: number }[] {
+    return Object.entries(flattenCoolers(data))
+        .map(([name, { cooling_speed }]) => ({ name, cooling_speed }))
+        .sort((a, b) => b.cooling_speed - a.cooling_speed);
+}
