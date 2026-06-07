@@ -1,3 +1,5 @@
+import alloysData from '../assets/alloys.json';
+
 // ============================================================
 // calculatorUtils.ts
 // Utility functions for the Alloy Calculator
@@ -44,17 +46,27 @@ export interface CraftingStep {
         ingot: number;
         rod: number;
     };
-    /** Combustible recommended to reach this alloy's required temperature */
+
+    /** Alloy required temperature */
+    temperature: number;
+    /** Base crafting time (before cooling factor) */
+    time: number;
+    success_rate: number;
+    level: number;
+
+    /** Combustibles compatibles (température >= temperature) */
+    combustiblesPossible: { name: string; temperature: number }[];
+
+    /** Refroidisseurs possibles (triés par cooling_speed desc) */
+    refroidisseursPossible: { name: string; cooling_speed: number; coolingTime: number }[];
+
+    /** Valeur “choix par défaut” (optionnel): combustible la plus basse qui convient */
     combustible: {
         name: string;
         temperature: number;
     } | null;
-    /** Alloy metadata */
-    temperature: number;
-    time: number;
-    success_rate: number;
-    level: number;
 }
+
 
 export interface CalculationResult {
     steps: CraftingStep[];
@@ -93,11 +105,7 @@ function flattenCoolers(data: AlloysData): Record<string, { cooling_speed: numbe
  * Adapt the path / fetch URL to match your project structure.
  */
 export async function loadAlloysData(): Promise<AlloysData> {
-    const response = await fetch('/public/alloys.json');
-    if (!response.ok) {
-        throw new Error(`Failed to load alloys data: ${response.statusText}`);
-    }
-    return response.json() as Promise<AlloysData>;
+    return alloysData as AlloysData;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -243,6 +251,11 @@ function buildStep(
 
     const combustible = pickCombustible(combustibles, alloy.temperature);
 
+    const combustiblesPossible = Object.entries(combustibles)
+        .filter(([, c]) => c.temperature >= alloy.temperature)
+        .map(([name, { temperature }]) => ({ name, temperature }))
+        .sort((a, b) => a.temperature - b.temperature);
+
     return {
         alloysName,
         ingotCount,
@@ -252,6 +265,8 @@ function buildStep(
             rod: equipmentRods,
         },
         combustible,
+        combustiblesPossible,
+        refroidisseursPossible: [], // rempli dans computeResult
         temperature: alloy.temperature,
         time: alloy.time,
         success_rate: alloy.success_rate,
@@ -271,7 +286,9 @@ function computeResult(
 ): CalculationResult {
     const alloys = flattenAlloys(data);
     const combustibles = flattenCombustibles(data);
+    const coolers = flattenCoolers(data);
     const equipments = flattenEquipments(data);
+
 
     const chain = getProgressionChain(alloys, startName, targetName);
     if (chain.length === 0) return {
@@ -334,7 +351,18 @@ function computeResult(
             equipIngots,
             equipRods
         );
+
+        // Remplit les refroidisseurs possibles pour ce step.
+        step.refroidisseursPossible = Object.entries(coolers)
+            .map(([name, { cooling_speed }]) => ({
+                name,
+                cooling_speed,
+                coolingTime: step.time * (1 - cooling_speed),
+            }))
+            .sort((a, b) => b.cooling_speed - a.cooling_speed);
+
         steps.push(step);
+
 
         // Record how many ingots of this alloy must be forged.
         alloysIngotsMap.set(alloysName, ingotCount);
