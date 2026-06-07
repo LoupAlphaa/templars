@@ -109,6 +109,20 @@
                 "temperature": 2000,
                 "time": 60,
                 "success_rate": 0.6
+            },
+            "Moonarium": {
+                "items": [
+                    {
+                        "Forged Obsidian": 2,
+                        "Nether star": 2,
+                        "Netherite Ingot": 1,
+                        "Resin brick": 8,
+                        "Levels": 2
+                    }
+                ],
+                "temperature": 900,
+                "time": 15,
+                "success_rate": 0.9
             }
         }
     ],
