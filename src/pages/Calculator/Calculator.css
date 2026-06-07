@@ -242,7 +242,7 @@
     border: 1px solid rgba(178, 34, 34, 0.15);
     border-radius: 8px;
     padding: 25px;
-    width: 87%;
+    width: 92%;
 }
 
 /* Lingots à forger panel — orange/amber accent to differentiate */
@@ -545,6 +545,10 @@
     display: inline-block;
     width: 1.2em;
     text-align: center;
+}
+
+.item-icon img {
+    max-width: 35px;
 }
 
 /* Materials Summary */

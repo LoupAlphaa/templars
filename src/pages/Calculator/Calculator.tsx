@@ -237,7 +237,11 @@ export default function Calculator() {
                                     {result.totalMaterials.map((material, idx) => (
                                         <div key={idx} className="material-item">
                                             <span className="material-content">
-                                                <span className="item-icon">{getItemIcon(material.name)}</span>
+                                                <span className="item-icon">{getItemIcon(material.name) ? (
+                                                    <img src={getItemIcon(material.name)} alt={material.name} />
+                                                ) : (
+                                                    '📦'
+                                                )}</span>
                                                 <span className="material-name">{material.name}</span>
                                             </span>
                                             <span className="material-quantity">
@@ -246,7 +250,7 @@ export default function Calculator() {
                                                     const stacks = Math.floor(material.quantity / stackSize);
                                                     const rest = material.quantity % stackSize;
 
-                                                    if( material.name === 'Levels' ) {
+                                                    if (material.name === 'Levels') {
                                                         return (
                                                             material.quantity
                                                         )
@@ -279,7 +283,11 @@ export default function Calculator() {
                                             <div key={idx} className="material-item alloy-ingot-item">
                                                 <span className="material-content">
                                                     <span className="forge-step-number">{idx + 1}</span>
-                                                    <span className="item-icon">{getItemIcon(ingot.name)}</span>
+                                                    <span className="item-icon">{getItemIcon(ingot.name) ? (
+                                                        <img src={getItemIcon(ingot.name)} alt={ingot.name} />
+                                                    ) : (
+                                                        '📦'
+                                                    )}</span>
                                                     <span className="material-name">{ingot.name}</span>
                                                 </span>
                                                 <span className="material-quantity alloy-quantity">{ingot.quantity}</span>
@@ -331,7 +339,11 @@ export default function Calculator() {
                                                         <ul>
                                                             {step.alloysCost.map((material, midx) => (
                                                                 <li key={midx}>
-                                                                    <span className="item-icon">{getItemIcon(material.name)}</span>
+                                                                    <span className="item-icon">{getItemIcon(material.name) ? (
+                                                                        <img src={getItemIcon(material.name)} alt={material.name} />
+                                                                    ) : (
+                                                                        '📦'
+                                                                    )}</span>
                                                                     {material.quantity}x {material.name}
                                                                 </li>
                                                             ))}
