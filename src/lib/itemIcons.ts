@@ -1,3 +1,18 @@
+import Copper from '../assets/Copper_Ingot.png'
+import Iron from '../assets/Iron_Ingot.png'
+import Resin from '../assets/Resin_Brick.png'
+import Quartz from '../assets/Nether_Quartz.png'
+import Gold from '../assets/Gold_Ingot.png'
+import Emerald from '../assets/Emerald.png'
+import Obsidian from '../assets/Obsidian.png'
+import Diamond from '../assets/Diamond.png'
+import Netherite from '../assets/Netherite_Ingot.png'
+import Nether_Brick from '../assets/Nether_Brick.png'
+import Amethyst from '../assets/Amethyst_Cluster.png'
+import Pearl from '../assets/Ender_Pearl.png'
+import Star from '../assets/Nether_Star.gif'
+import Shard from '../assets/Moonarium.png'
+
 // Item emoji icons mapping for Minecraft items
 export const ITEM_ICONS: Record<string, string> = {
     // Products
@@ -5,27 +20,27 @@ export const ITEM_ICONS: Record<string, string> = {
     'Wooden rod': '🪵',
     
     // Alloys
-    'Bronze': '🟠',
-    'Hardened steel': '⚙️',
-    'Ombralite': '🟣',
-    'Titane': '✨',
-    'Forged Obsidian': '⬛',
-    'Moonarium': '🌙',
+    'Bronze': Copper,
+    'Hardened steel': Iron,
+    'Ombralite': Nether_Brick,
+    'Titane': Diamond,
+    'Forged Obsidian': Obsidian,
+    'Moonarium': Shard,
     
     // Base materials
-    'Copper Ingot': '🟠',
-    'Iron Ingot': '⚪',
-    'Resin brick': '🟤',
-    'Quartz': '⬜',
-    'Gold Ingot': '🟡',
-    'Emerald': '💚',
-    'Diamond': '💎',
-    'Obsidian': '⬛',
-    'Netherite Ingot': '◼️',
-    'Netherack brick': '🔴',
-    'Amethyst cluster': '🟣',
-    'Ender pearl': '⚫',
-    'Nether star': '⭐',
+    'Copper Ingot': Copper,
+    'Iron Ingot': Iron,
+    'Resin brick': Resin,
+    'Quartz': Quartz,
+    'Gold Ingot': Gold,
+    'Emerald': Emerald,
+    'Diamond': Diamond,
+    'Obsidian': Obsidian,
+    'Netherite Ingot': Netherite,
+    'Netherack brick': Nether_Brick,
+    'Amethyst cluster': Amethyst,
+    'Ender pearl': Pearl,
+    'Nether star': Star,
     
     // Equipment bases
     'Netherite Helmet': '◼️',
@@ -112,6 +127,6 @@ export const ITEM_ICONS: Record<string, string> = {
     'Moonarium Rod': '🌙',
 };
 
-export function getItemIcon(itemName: string): string {
-    return ITEM_ICONS[itemName] || '📦';
+export function getItemIcon(itemName: string): string | undefined {
+    return ITEM_ICONS[itemName];
 }
