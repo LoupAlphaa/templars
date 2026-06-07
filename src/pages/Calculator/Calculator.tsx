@@ -24,6 +24,9 @@ export default function Calculator() {
     const [selectedTargetAlloy, setSelectedTargetAlloy] = useState<string>('Bronze');
     const [selectedEquipmentType, setSelectedEquipmentType] = useState<string>('Helmet');
 
+    // Lingots déjà possédés (commun aux deux modes)
+    const [ownedIngots, setOwnedIngots] = useState<Record<string, number>>({});
+
     const [result, setResult] = useState<CalculationResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [showSteps, setShowSteps] = useState(false);
@@ -39,41 +42,34 @@ export default function Calculator() {
         });
     }, []);
 
+    // Réinitialiser les lingots possédés quand la sélection change
+    useEffect(() => {
+        setOwnedIngots({});
+    }, [calculatorMode, selectedAlloy, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType]);
+
     // Calculate materials when selections change
     useEffect(() => {
         if (!data) return;
 
         if (calculatorMode === 'ingots') {
-            // Pour les lingots: on conserve steps (chaîne des alliages) afin d'afficher les étapes.
-            const calc = calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot');
-            const scaledTotal = calc.totalMaterials.map((m) => ({ ...m, quantity: m.quantity * ingotQuantity }));
-            const scaledIngots = calc.alloysIngots.map((m) => ({ ...m, quantity: m.quantity * ingotQuantity }));
+    const calc = calculateMaterialsNeeded(
+        data,
+        'Netherite',
+        selectedAlloy,
+        'Lingot',
+        ownedIngots,
+        ingotQuantity
+    );
 
-            const scaledSteps = calc.steps.map((s) => ({
-                ...s,
-                // ingotCount scale (les matériaux bruts & coûts sont déjà calculés pour 1 batch de lingot)
-                ingotCount: s.ingotCount * ingotQuantity,
-                alloysCost: s.alloysCost.map((c) => ({ ...c, quantity: c.quantity * ingotQuantity })),
-                equipmentCost: {
-                    ingot: 0,
-                    rod: 0,
-                },
-            }));
-
-            setResult({
-                steps: scaledSteps,
-                totalMaterials: scaledTotal,
-                alloysIngots: scaledIngots,
-            });
-        } else {
-            // For equipment
+    setResult(calc);
+} else {
             const calc =
                 selectedStartAlloy === 'Netherite'
-                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType)
-                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType);
+                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, ownedIngots)
+                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, ownedIngots);
             setResult(calc);
         }
-    }, [data, calculatorMode, selectedAlloy, ingotQuantity, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType]);
+    }, [data, calculatorMode, selectedAlloy, ingotQuantity, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, ownedIngots]);
 
     if (loading) {
         return <div className="calculator">Chargement des données...</div>;
@@ -222,6 +218,79 @@ export default function Calculator() {
 
                 {result && result.totalMaterials.length > 0 && (
                     <div className="calculator-results">
+
+                        {/* ── Lingots possédés ── */}
+                        {result.alloysIngots.length > 0 && (() => {
+                            const chain = result.alloysIngots.map((i) => i.name);
+                            const lastIdx = chain.length - 1;
+
+                            // ratio[i] = units of chain[i] needed per unit of chain[i+1]
+                            const ratios: number[] = chain.map((name, i) => {
+                                if (i === lastIdx) return 1;
+                                const thisMax = result.alloysIngotsMax[name] ?? 1;
+                                const nextMax = result.alloysIngotsMax[chain[i + 1]] ?? 1;
+                                return nextMax > 0 ? thisMax / nextMax : 1;
+                            });
+
+                            // Units of chain[targetIdx] already covered by owned higher-tier ingots
+                            const consumedByHigher = (targetIdx: number): number => {
+                                let consumed = 0;
+                                for (let j = targetIdx + 1; j <= lastIdx; j++) {
+                                    const ownedAtJ = ownedIngots[chain[j]] ?? 0;
+                                    if (ownedAtJ === 0) continue;
+                                    let cascadeRatio = 1;
+                                    for (let k = targetIdx; k < j; k++) cascadeRatio *= ratios[k];
+                                    consumed += ownedAtJ * cascadeRatio;
+                                }
+                                return consumed;
+                            };
+
+                            // Input cap: last alloy capped at rawMax-1, intermediates at full rawMax,
+                            // both further reduced by what higher-tier owned already covers.
+                            const effectiveMax = (idx: number): number => {
+                                const rawMax = result.alloysIngotsMax[chain[idx]];
+                                const baseCap = idx === lastIdx ? rawMax - 1 : rawMax;
+                                return Math.max(0, baseCap - consumedByHigher(idx));
+                            };
+
+                            return (
+                                <div className="owned-ingots-section">
+                                    <h3 className="owned-ingots-title">⚗️ Lingots déjà possédés</h3>
+                                    <p className="owned-ingots-hint">Indiquez vos lingots disponibles pour déduire les matériaux correspondants du résultat.</p>
+                                    <div className="owned-ingots-list">
+                                        {chain.map((name, idx) => {
+                                            const max = effectiveMax(idx);
+                                            const owned = Math.min(ownedIngots[name] ?? 0, max);
+                                            return (
+                                                <div key={name} className="owned-ingot-row">
+                                                    <span className="owned-ingot-name">
+                                                        <span className="item-icon">
+                                                            {getItemIcon(name)
+                                                                ? <img src={getItemIcon(name)} alt={name} />
+                                                                : '📦'}
+                                                        </span>
+                                                        {name}
+                                                        <span className="owned-ingot-max">/ {max}</span>
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        className="owned-ingot-input"
+                                                        min={0}
+                                                        max={max}
+                                                        value={owned}
+                                                        onChange={(e) => {
+                                                            const val = Math.min(max, Math.max(0, parseInt(e.target.value) || 0));
+                                                            setOwnedIngots((prev) => ({ ...prev, [name]: val }));
+                                                        }}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
                         <div className="summary-columns">
                             {/* Matériaux bruts */}
                             <div className="materials-summary">
@@ -229,7 +298,7 @@ export default function Calculator() {
                                     <h2>Matériaux bruts</h2>
                                     <span className="product-badge">
                                         {calculatorMode === 'ingots' && `⚱️ Lingots x${ingotQuantity} de ${selectedAlloy}`}
-                                        {calculatorMode === 'equipment' && `${getItemIcon(selectedEquipmentType)} ${selectedEquipmentType}s`}
+                                        {calculatorMode === 'equipment' && `${selectedEquipmentType}`}
                                     </span>
                                 </div>
                                 <div className="materials-list">
@@ -271,120 +340,186 @@ export default function Calculator() {
                             </div>
 
                             {/* Lingots d'alliages à forger */}
-                            {result.alloysIngots.length > 0 && (
-                                <div className="materials-summary alloys-ingots-summary">
-                                    <div className="summary-header">
-                                        <h2>Lingots à forger</h2>
-                                        <span className="product-badge forge-badge">🔥 Par ordre de forge</span>
+                            {result.alloysIngots.length > 0 && (() => {
+                                const chain = result.alloysIngots.map((i) => i.name);
+                                const lastIdx = chain.length - 1;
+
+                                const ratios: number[] = chain.map((name, i) => {
+                                    if (i === lastIdx) return 1;
+                                    const thisMax = result.alloysIngotsMax[name] ?? 1;
+                                    const nextMax = result.alloysIngotsMax[chain[i + 1]] ?? 1;
+                                    return nextMax > 0 ? thisMax / nextMax : 1;
+                                });
+
+                                const consumedByHigher = (targetIdx: number): number => {
+                                    let consumed = 0;
+                                    for (let j = targetIdx + 1; j <= lastIdx; j++) {
+                                        const ownedAtJ = ownedIngots[chain[j]] ?? 0;
+                                        if (ownedAtJ === 0) continue;
+                                        let cascadeRatio = 1;
+                                        for (let k = targetIdx; k < j; k++) cascadeRatio *= ratios[k];
+                                        consumed += ownedAtJ * cascadeRatio;
+                                    }
+                                    return consumed;
+                                };
+
+                                // rawMax − owned at this tier − consumption from higher-tier owned
+                                const remainingToForge = (idx: number): number => {
+                                    const rawMax = result.alloysIngotsMax[chain[idx]];
+                                    const ownedDirect = Math.min(ownedIngots[chain[idx]] ?? 0, rawMax);
+                                    return Math.max(0, rawMax - ownedDirect - consumedByHigher(idx));
+                                };
+
+                                return (
+                                    <div className="materials-summary alloys-ingots-summary">
+                                        <div className="summary-header">
+                                            <h2>Lingots à forger</h2>
+                                            <span className="product-badge forge-badge">🔥 Par ordre de forge</span>
+                                        </div>
+                                        <div className="materials-list">
+                                            {chain.map((name, idx) => (
+                                                <div key={idx} className="material-item alloy-ingot-item">
+                                                    <span className="material-content">
+                                                        <span className="forge-step-number">{idx + 1}</span>
+                                                        <span className="item-icon">{getItemIcon(name) ? (
+                                                            <img src={getItemIcon(name)} alt={name} />
+                                                        ) : (
+                                                            '📦'
+                                                        )}</span>
+                                                        <span className="material-name">{name}</span>
+                                                    </span>
+                                                    <span className="material-quantity alloy-quantity">{remainingToForge(idx)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                    <div className="materials-list">
-                                        {result.alloysIngots.map((ingot, idx) => (
-                                            <div key={idx} className="material-item alloy-ingot-item">
-                                                <span className="material-content">
-                                                    <span className="forge-step-number">{idx + 1}</span>
-                                                    <span className="item-icon">{getItemIcon(ingot.name) ? (
-                                                        <img src={getItemIcon(ingot.name)} alt={ingot.name} />
-                                                    ) : (
-                                                        '📦'
-                                                    )}</span>
-                                                    <span className="material-name">{ingot.name}</span>
-                                                </span>
-                                                <span className="material-quantity alloy-quantity">{ingot.quantity}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
 
-                        {result.steps.length > 0 && (
-                            <div className="steps-section">
-                                <div className="steps-header">
-                                    <h2>Étapes d'alliage</h2>
-                                    <button
-                                        className={`toggle-button ${showSteps ? 'open' : ''}`}
-                                        onClick={() => setShowSteps(!showSteps)}
-                                        aria-expanded={showSteps}
-                                    >
-                                        <span className="toggle-icon">{showSteps ? '▼' : '▶'}</span>
-                                        {showSteps ? 'Masquer' : 'Afficher'} les étapes
-                                    </button>
-                                </div>
-                                {showSteps && (
-                                    <div className="steps-list">
-                                        {result.steps.map((step, idx) => (
-                                            <div key={idx} className="step">
-                                                <div className="step-header">
-                                                    <h3>{step.alloysName}</h3>
-                                                    <span className="step-number">{idx + 1}</span>
-                                                </div>
-                                                <div className="step-content">
-                                                    <div className="equipment-cost">
-                                                        <p className="label">Coût de l'équipement:</p>
-                                                        <ul>
-                                                            {step.equipmentCost.ingot > 0 && (
-                                                                <li>
-                                                                    {step.equipmentCost.ingot}x lingots
-                                                                </li>
-                                                            )}
-                                                            {step.equipmentCost.rod > 0 && (
-                                                                <li>{step.equipmentCost.rod}x bâtons de bois</li>
-                                                            )}
-                                                        </ul>
-                                                    </div>
+                        {result.steps.length > 0 && (() => {
+                            const chain = result.alloysIngots.map((i) => i.name);
+                            const lastIdx = chain.length - 1;
 
-                                                    <div className="materials-needed">
-                                                        <p className="label">Matériaux pour l'alliage:</p>
-                                                        <ul>
-                                                            {step.alloysCost.map((material, midx) => (
-                                                                <li key={midx}>
-                                                                    <span className="item-icon">{getItemIcon(material.name) ? (
-                                                                        <img src={getItemIcon(material.name)} alt={material.name} />
-                                                                    ) : (
-                                                                        '📦'
-                                                                    )}</span>
-                                                                    {material.quantity}x {material.name}
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
+                            const ratios: number[] = chain.map((name, i) => {
+                                if (i === lastIdx) return 1;
+                                const thisMax = result.alloysIngotsMax[name] ?? 1;
+                                const nextMax = result.alloysIngotsMax[chain[i + 1]] ?? 1;
+                                return nextMax > 0 ? thisMax / nextMax : 1;
+                            });
 
-                                                    <div className="thermo-section">
-                                                        <p className="label">Thermique:</p>
+                            const consumedByHigher = (targetIdx: number): number => {
+                                let consumed = 0;
+                                for (let j = targetIdx + 1; j <= lastIdx; j++) {
+                                    const ownedAtJ = ownedIngots[chain[j]] ?? 0;
+                                    if (ownedAtJ === 0) continue;
+                                    let cascadeRatio = 1;
+                                    for (let k = targetIdx; k < j; k++) cascadeRatio *= ratios[k];
+                                    consumed += ownedAtJ * cascadeRatio;
+                                }
+                                return consumed;
+                            };
 
-                                                        <div className="thermo-row">
-                                                            <strong>Température requise:</strong> {step.temperature}
-                                                        </div>
+                            const remainingToForge = (idx: number): number => {
+                                const rawMax = result.alloysIngotsMax[chain[idx]];
+                                const ownedDirect = Math.min(ownedIngots[chain[idx]] ?? 0, rawMax);
+                                return Math.max(0, rawMax - ownedDirect - consumedByHigher(idx));
+                            };
 
-                                                        <div className="thermo-row">
-                                                            <strong>Combustibles possibles:</strong>
-                                                            <ul>
-                                                                {step.combustiblesPossible.map((c) => (
-                                                                    <li key={c.name}>
-                                                                        {c.name} ({c.temperature})
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-
-                                                        <div className="thermo-row">
-                                                            <strong>Refroidisseurs possibles:</strong>
-                                                            <ul>
-                                                                {step.refroidisseursPossible.map((cool) => (
-                                                                    <li key={cool.name}>
-                                                                        {cool.name} (−{cool.cooling_speed}) → temps: {cool.coolingTime.toFixed(2)}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
+                            return (
+                                <div className="steps-section">
+                                    <div className="steps-header">
+                                        <h2>Étapes d'alliage</h2>
+                                        <button
+                                            className={`toggle-button ${showSteps ? 'open' : ''}`}
+                                            onClick={() => setShowSteps(!showSteps)}
+                                            aria-expanded={showSteps}
+                                        >
+                                            <span className="toggle-icon">{showSteps ? '▼' : '▶'}</span>
+                                            {showSteps ? 'Masquer' : 'Afficher'} les étapes
+                                        </button>
                                     </div>
-                                )}
-                            </div>
-                        )}
+                                    {showSteps && (
+                                        <div className="steps-list">
+                                            {result.steps.map((step, idx) => {
+                                                const chainIdx = chain.indexOf(step.alloysName);
+                                                const rawMax = result.alloysIngotsMax[step.alloysName] ?? step.ingotCount;
+                                                const remaining = chainIdx !== -1 ? remainingToForge(chainIdx) : step.ingotCount;
+                                                const scale = rawMax > 0 ? remaining / rawMax : 0;
+
+                                                return (
+                                                    <div key={idx} className="step">
+                                                        <div className="step-header">
+                                                            <h3>{step.alloysName}</h3>
+                                                            <span className="step-number">{idx + 1}</span>
+                                                        </div>
+                                                        <div className="step-content">
+                                                            <div className="equipment-cost">
+                                                                <p className="label">Coût de l'équipement:</p>
+                                                                <ul>
+                                                                    {step.equipmentCost.ingot > 0 && (
+                                                                        <li>{step.equipmentCost.ingot}x lingots</li>
+                                                                    )}
+                                                                    {step.equipmentCost.rod > 0 && (
+                                                                        <li>{step.equipmentCost.rod}x bâtons de bois</li>
+                                                                    )}
+                                                                </ul>
+                                                            </div>
+
+                                                            <div className="materials-needed">
+                                                                <p className="label">Matériaux pour l'alliage:</p>
+                                                                <ul>
+                                                                    {step.alloysCost.map((material, midx) => (
+                                                                        <li key={midx}>
+                                                                            <span className="item-icon">{getItemIcon(material.name) ? (
+                                                                                <img src={getItemIcon(material.name)} alt={material.name} />
+                                                                            ) : (
+                                                                                '📦'
+                                                                            )}</span>
+                                                                            {Math.ceil(material.quantity * scale)}x {material.name}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+
+                                                            <div className="thermo-section">
+                                                                <p className="label">Thermique:</p>
+
+                                                                <div className="thermo-row">
+                                                                    <strong>Température requise:</strong> {step.temperature}
+                                                                </div>
+
+                                                                <div className="thermo-row">
+                                                                    <strong>Combustibles possibles:</strong>
+                                                                    <ul>
+                                                                        {step.combustiblesPossible.map((c) => (
+                                                                            <li key={c.name}>
+                                                                                {c.name} ({c.temperature})
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+
+                                                                <div className="thermo-row">
+                                                                    <strong>Refroidisseurs possibles:</strong>
+                                                                    <ul>
+                                                                        {step.refroidisseursPossible.map((cool) => (
+                                                                            <li key={cool.name}>
+                                                                                {cool.name} (−{cool.cooling_speed}) → temps: {cool.coolingTime.toFixed(2)}
+                                                                            </li>
+                                                                        ))}
+                                                                    </ul>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
 
