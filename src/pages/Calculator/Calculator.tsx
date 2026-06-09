@@ -509,6 +509,8 @@ export default function Calculator() {
                                                 const remaining = chainIdx !== -1 ? remainingToForge(chainIdx) : step.ingotCount;
                                                 const scale = rawMax > 0 ? remaining / rawMax : 0;
 
+                                                if (remaining === 0) return null;
+
                                                 return (
                                                     <div key={idx} className="step">
                                                         <div className="step-header">
