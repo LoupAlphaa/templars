@@ -21,6 +21,7 @@ export interface AlloyDefinition {
     temperature: number;
     time: number;
     success_rate: number;
+    cooler?: string[];
 }
 
 export interface EquipmentDefinition {
@@ -83,6 +84,11 @@ export interface CalculationResult {
      * Clé = nom alliage, valeur = quantité totale nécessaire (plafond).
      */
     alloysIngotsMax: Record<string, number>;
+    /**
+     * Full chain from the very first alloy (Bronze) to the target, in progression order.
+     * Used by the UI to display owned-ingot inputs for all pre-start alloys too.
+     */
+    fullChain: string[];
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -313,6 +319,7 @@ function computeResult(
         totalMaterials: [],
         alloysIngots: [],
         alloysIngotsMax: {},
+        fullChain: [],
     };
 
     const isLingot = equipmentType === 'Lingot';
@@ -371,7 +378,11 @@ function computeResult(
         );
 
         // Remplit les refroidisseurs possibles pour ce step.
+        // Si l'alliage définit une liste "cooler", on filtre sur ces noms uniquement.
+        const alloyForStep = alloys[step.alloysName];
+        const allowedCoolers = alloyForStep?.cooler ?? null;
         step.refroidisseursPossible = Object.entries(coolers)
+            .filter(([name]) => allowedCoolers === null || allowedCoolers.includes(name))
             .map(([name, { cooling_speed }]) => ({
                 name,
                 cooling_speed,
@@ -419,24 +430,42 @@ function computeResult(
         }
     }
 
-    // Build alloysIngots list in chain order (lowest tier first → avant-dernier seulement).
-    // On exclut l'alliage objectif (dernier de la chain) : le joueur ne peut pas "déjà posséder"
-    // les lingots qu'il est précisément en train de fabriquer.
+    // Build alloysIngots and alloysIngotsMax.
+    //
+    // alloysIngotsMax must cover ALL alloys from the very first tier (Bronze) up to the
+    // target, even when startName is a mid-tier alloy.  This lets the player declare that
+    // they already own, say, Bronze ingots even when the calculation starts from
+    // Hardened Steel — because Bronze is still an ingredient of Hardened Steel.
+    //
+    // To compute the raw "how many would be needed without any owned" count for alloys
+    // that sit *before* startName we run a full chain from scratch (startName = null).
+    const fullChain = getProgressionChain(alloys, null, targetName);
+    // Counts for the full chain (ignoring owned) so we can fill alloysIngotsMax.
+    const fullIngotCounts: number[] = new Array(fullChain.length).fill(0);
+    const fullTargetIdx = fullChain.length - 1;
+    // The target ingot count is already known from the main calculation.
+    fullIngotCounts[fullTargetIdx] = targetIngotCount;
+    for (let i = fullChain.length - 2; i >= 0; i--) {
+        const nextAlloy = alloys[fullChain[i + 1]];
+        const ingr = getAlloyIngredients(nextAlloy).find((m) => m.name === fullChain[i]);
+        const perBatch = ingr ? ingr.quantity : 0;
+        fullIngotCounts[i] = perBatch * fullIngotCounts[i + 1];
+    }
+
     const alloysIngotsMax: Record<string, number> = {};
-    let alloysIngots: Material[] = chain.map((name) => {
-        const total = alloysIngotsMap.get(name) ?? 0;
-        alloysIngotsMax[name] = total;
+    fullChain.forEach((name, i) => {
+        alloysIngotsMax[name] = fullIngotCounts[i];
+    });
+
+    // alloysIngots drives the "Lingots à forger" display: only the alloys in the active
+    // chain matter here (the ones the player still has to forge in this session).
+    // In lingot mode the target alloy itself is excluded (you are forging it, not owning it).
+    const displayChain = isLingot ? chain.slice(0, -1) : chain;
+    let alloysIngots: Material[] = displayChain.map((name) => {
+        const total = alloysIngotsMax[name] ?? 0;
         const owned = Math.min(ownedIngots[name] ?? 0, total);
         return { name, quantity: Math.max(0, total - owned) };
     });
-    if (isLingot) {
-        alloysIngots = chain.slice(0, -1).map((name) => {
-            const total = alloysIngotsMap.get(name) ?? 0;
-            alloysIngotsMax[name] = total;
-            const owned = Math.min(ownedIngots[name] ?? 0, total);
-            return { name, quantity: Math.max(0, total - owned) };
-        });
-    }
     console.log('chain', chain);
     console.log('alloysIngotsMap', Object.fromEntries(alloysIngotsMap));
 
@@ -475,6 +504,7 @@ function computeResult(
         totalMaterials: mapToList(totalMap).sort((a, b) => b.quantity - a.quantity),
         alloysIngots,
         alloysIngotsMax,
+        fullChain,
     };
 }
 

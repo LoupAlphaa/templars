@@ -108,7 +108,7 @@ export default function Calculator() {
         const computeWithClamping = (rawOwned: Record<string, number>) => {
             if (calculatorMode === 'ingots') {
                 const raw = calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', {}, ingotQuantity);
-                const chain = raw.alloysIngots.map((i) => i.name);
+                const chain = raw.fullChain;
                 const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, false);
                 return calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', clamped, ingotQuantity);
             } else {
@@ -116,7 +116,7 @@ export default function Calculator() {
                 const raw = isNetherite
                     ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, {})
                     : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, {});
-                const chain = raw.alloysIngots.map((i) => i.name);
+                const chain = raw.fullChain;
                 const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, true);
                 return isNetherite
                     ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, clamped)
@@ -277,7 +277,7 @@ export default function Calculator() {
 
                         {/* ── Lingots possédés ── */}
                         {result.alloysIngots.length > 0 && (() => {
-                            const chain = result.alloysIngots.map((i) => i.name);
+                            const chain = result.fullChain;
                             const lastIdx = chain.length - 1;
 
                             // ratio[i] = units of chain[i] needed per unit of chain[i+1]
@@ -397,7 +397,7 @@ export default function Calculator() {
 
                             {/* Lingots d'alliages à forger */}
                             {result.alloysIngots.length > 0 && (() => {
-                                const chain = result.alloysIngots.map((i) => i.name);
+                                const chain = result.fullChain;
                                 const lastIdx = chain.length - 1;
 
                                 const ratios: number[] = chain.map((name, i) => {
@@ -426,6 +426,9 @@ export default function Calculator() {
                                     return Math.max(0, rawMax - ownedDirect - consumedByHigher(idx));
                                 };
 
+                                // Only display alloys that are part of this session's forge chain.
+                                const forgeChain = result.alloysIngots.map((i) => i.name);
+
                                 return (
                                     <div className="materials-summary alloys-ingots-summary">
                                         <div className="summary-header">
@@ -433,10 +436,12 @@ export default function Calculator() {
                                             <span className="product-badge forge-badge">🔥 Par ordre de forge</span>
                                         </div>
                                         <div className="materials-list">
-                                            {chain.map((name, idx) => (
-                                                <div key={idx} className="material-item alloy-ingot-item">
+                                            {forgeChain.map((name, forgeIdx) => {
+                                                const chainIdx = chain.indexOf(name);
+                                                return (
+                                                <div key={forgeIdx} className="material-item alloy-ingot-item">
                                                     <span className="material-content">
-                                                        <span className="forge-step-number">{idx + 1}</span>
+                                                        <span className="forge-step-number">{forgeIdx + 1}</span>
                                                         <span className="item-icon">{getItemIcon(name) ? (
                                                             <img src={getItemIcon(name)} alt={name} />
                                                         ) : (
@@ -444,9 +449,10 @@ export default function Calculator() {
                                                         )}</span>
                                                         <span className="material-name">{name}</span>
                                                     </span>
-                                                    <span className="material-quantity alloy-quantity">{remainingToForge(idx)}</span>
+                                                    <span className="material-quantity alloy-quantity">{remainingToForge(chainIdx)}</span>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 );
@@ -454,7 +460,7 @@ export default function Calculator() {
                         </div>
 
                         {result.steps.length > 0 && (() => {
-                            const chain = result.alloysIngots.map((i) => i.name);
+                            const chain = result.fullChain;
                             const lastIdx = chain.length - 1;
 
                             const ratios: number[] = chain.map((name, i) => {
@@ -502,6 +508,8 @@ export default function Calculator() {
                                                 const rawMax = result.alloysIngotsMax[step.alloysName] ?? step.ingotCount;
                                                 const remaining = chainIdx !== -1 ? remainingToForge(chainIdx) : step.ingotCount;
                                                 const scale = rawMax > 0 ? remaining / rawMax : 0;
+
+                                                if (remaining === 0) return null;
 
                                                 return (
                                                     <div key={idx} className="step">
