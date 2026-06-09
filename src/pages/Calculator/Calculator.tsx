@@ -16,7 +16,7 @@ function computeCascadeMaxes(
     chain: string[],
     alloysIngotsMax: Record<string, number>,
     ownedIngots: Record<string, number>,
-    isEquipmentMode: boolean,
+    targetAlloyName: string, // alloy the player is trying to make — capped at rawMax-1
 ): Record<string, number> {
     const lastIdx = chain.length - 1;
     const ratios: number[] = chain.map((name, i) => {
@@ -39,7 +39,7 @@ function computeCascadeMaxes(
     const result: Record<string, number> = {};
     chain.forEach((name, idx) => {
         const rawMax = alloysIngotsMax[name] ?? 0;
-        const baseCap = (isEquipmentMode && idx === lastIdx) ? rawMax - 1 : rawMax;
+        const baseCap = name === targetAlloyName ? rawMax - 1 : rawMax;
         result[name] = Math.max(0, baseCap - consumedByHigher(idx));
     });
     return result;
@@ -49,9 +49,9 @@ function clampOwnedIngots(
     chain: string[],
     alloysIngotsMax: Record<string, number>,
     ownedIngots: Record<string, number>,
-    isEquipmentMode: boolean,
+    targetAlloyName: string,
 ): Record<string, number> {
-    const maxes = computeCascadeMaxes(chain, alloysIngotsMax, ownedIngots, isEquipmentMode);
+    const maxes = computeCascadeMaxes(chain, alloysIngotsMax, ownedIngots, targetAlloyName);
     const clamped: Record<string, number> = { ...ownedIngots };
     for (const name of chain) {
         const cap = maxes[name] ?? 0;
@@ -109,7 +109,7 @@ export default function Calculator() {
             if (calculatorMode === 'ingots') {
                 const raw = calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', {}, ingotQuantity);
                 const chain = raw.fullChain;
-                const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, false);
+                const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, selectedAlloy);
                 return calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', clamped, ingotQuantity);
             } else {
                 const isNetherite = selectedStartAlloy === 'Netherite';
@@ -117,7 +117,7 @@ export default function Calculator() {
                     ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, {})
                     : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, {});
                 const chain = raw.fullChain;
-                const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, true);
+                const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, selectedTargetAlloy);
                 return isNetherite
                     ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, clamped)
                     : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, clamped);
@@ -301,11 +301,16 @@ export default function Calculator() {
                                 return consumed;
                             };
 
-                            // Input cap: last alloy capped at rawMax-1, intermediates at full rawMax,
-                            // both further reduced by what higher-tier owned already covers.
+                            // Input cap:
+                            // - in equipment mode: last alloy in chain capped at rawMax-1
+                            // - in ingots mode: the target alloy (selectedAlloy) capped at rawMax-1
+                            //   (you can't own as many as you want to forge)
+                            // Both are further reduced by what higher-tier owned already covers.
+                            const targetAlloyCap = calculatorMode === 'ingots' ? selectedAlloy : chain[lastIdx];
                             const effectiveMax = (idx: number): number => {
                                 const rawMax = result.alloysIngotsMax[chain[idx]];
-                                const baseCap = idx === lastIdx && calculatorMode === 'equipment' ? rawMax - 1 : rawMax;
+                                const isTarget = chain[idx] === targetAlloyCap;
+                                const baseCap = isTarget ? rawMax - 1 : rawMax;
                                 return Math.max(0, baseCap - consumedByHigher(idx));
                             };
 
@@ -316,6 +321,7 @@ export default function Calculator() {
                                     <div className="owned-ingots-list">
                                         {chain.map((name, idx) => {
                                             const max = effectiveMax(idx);
+                                            if (max <= 0) return null;
                                             const owned = Math.min(ownedIngots[name] ?? 0, max);
                                             return (
                                                 <div key={name} className="owned-ingot-row">
