@@ -44,7 +44,14 @@
                 ],
                 "temperature": 600,
                 "time": 8,
-                "success_rate": 0.95
+                "success_rate": 0.95,
+                "cooler": [
+                        "Ice",
+                        "Packed ice",
+                        "Blue ice",
+                        "Powder snow",
+                        "Heart of the sea"
+                ]
             },
             "Hardened steel": {
                 "items": [
@@ -58,7 +65,13 @@
                 ],
                 "temperature": 900,
                 "time": 15,
-                "success_rate": 0.9
+                "success_rate": 0.9,
+                "cooler": [
+                        "Packed ice",
+                        "Blue ice",
+                        "Powder snow",
+                        "Heart of the sea"
+                ]
             },
             "Ombralite": {
                 "items": [
@@ -75,7 +88,12 @@
                 ],
                 "temperature": 1200,
                 "time": 25,
-                "success_rate": 0.8
+                "success_rate": 0.8,
+                "cooler": [
+                        "Blue ice",
+                        "Powder snow",
+                        "Heart of the sea"
+                ]
             },
             "Titane": {
                 "items": [
@@ -91,7 +109,12 @@
                 ],
                 "temperature": 1600,
                 "time": 40,
-                "success_rate": 0.7
+                "success_rate": 0.7,
+                "cooler": [
+                        "Blue ice",
+                        "Powder snow",
+                        "Heart of the sea"
+                ]
             },
             "Forged Obsidian": {
                 "items": [
@@ -108,7 +131,10 @@
                 ],
                 "temperature": 2000,
                 "time": 60,
-                "success_rate": 0.6
+                "success_rate": 0.6,
+                "cooler": [
+                        "Heart of the sea"
+                ]
             },
             "Moonarium": {
                 "items": [
@@ -122,7 +148,10 @@
                 ],
                 "temperature": 2500,
                 "time": 60,
-                "success_rate": 0.6
+                "success_rate": 0.6,
+                "cooler": [
+                        "Heart of the sea"
+                ]
             }
         }
     ],
@@ -142,6 +171,9 @@
             },
             "Heart of the sea": {
                 "cooling_speed": 0.5
+            },
+            "Echo shard": {
+                "cooling_speed": 0.8
             }
         }
     ],
