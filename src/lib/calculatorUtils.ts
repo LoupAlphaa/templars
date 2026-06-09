@@ -21,6 +21,7 @@ export interface AlloyDefinition {
     temperature: number;
     time: number;
     success_rate: number;
+    cooler?: string[];
 }
 
 export interface EquipmentDefinition {
@@ -377,7 +378,11 @@ function computeResult(
         );
 
         // Remplit les refroidisseurs possibles pour ce step.
+        // Si l'alliage définit une liste "cooler", on filtre sur ces noms uniquement.
+        const alloyForStep = alloys[step.alloysName];
+        const allowedCoolers = alloyForStep?.cooler ?? null;
         step.refroidisseursPossible = Object.entries(coolers)
+            .filter(([name]) => allowedCoolers === null || allowedCoolers.includes(name))
             .map(([name, { cooling_speed }]) => ({
                 name,
                 cooling_speed,
