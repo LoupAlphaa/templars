@@ -12,6 +12,12 @@ import Amethyst from '../assets/Amethyst_Cluster.png'
 import Pearl from '../assets/Ender_Pearl.png'
 import Star from '../assets/Nether_Star.gif'
 import Shard from '../assets/Moonarium.png'
+import Experience_Orb from '../assets/Experience_Orb.png'
+import Sculk from '../assets/Sculk.gif'
+import Glowstone from '../assets/Glowstone_Dust.png'
+import Golden_Dandelion from '../assets/Golden_Dandelion.png'
+import Wither_Rose from '../assets/Wither_Rose.png'
+import Redstone from '../assets/Redstone_Dust.webp'
 
 // Item emoji icons mapping for Minecraft items
 export const ITEM_ICONS: Record<string, string> = {
@@ -41,6 +47,14 @@ export const ITEM_ICONS: Record<string, string> = {
     'Amethyst cluster': Amethyst,
     'Ender pearl': Pearl,
     'Nether star': Star,
+    'Levels': Experience_Orb,
+    'Nether brick': Nether_Brick,
+    'Sculk': Sculk,
+    'Glowstone dust': Glowstone,
+    'Golden dandelion': Golden_Dandelion,
+    'Wither rose': Wither_Rose,
+    'Redstone': Redstone,
+
     
     // Equipment bases
     'Netherite Helmet': '◼️',
