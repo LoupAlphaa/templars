@@ -16,7 +16,7 @@
             "Lava bucket": {
                 "temperature": 1200
             },
-            "Blaze powder": {
+            "Blaze rod": {
                 "temperature": 1600
             },
             "Magma cream": {
@@ -43,7 +43,7 @@
                     }
                 ],
                 "temperature": 600,
-                "time": 8,
+                "time": 6,
                 "success_rate": 0.95,
                 "cooler": [
                         "Ice",
@@ -57,14 +57,15 @@
                 "items": [
                     {
                         "Bronze": 2,
-                        "Gold Ingot": 16,
-                        "Emerald": 16,
-                        "Resin brick": 8,
+                        "Gold Ingot": 18,
+                        "Emerald": 10,
+                        "Resin brick": 12,
+                        "Redstone": 16,
                         "Levels": 2
                     }
                 ],
                 "temperature": 900,
-                "time": 15,
+                "time": 8,
                 "success_rate": 0.9,
                 "cooler": [
                         "Packed ice",
@@ -76,18 +77,20 @@
             "Ombralite": {
                 "items": [
                     {
-                        "Hardened steel": 2,
-                        "Diamond": 8,
-                        "Emerald": 16,
-                        "Obsidian": 12,
+                        "Hardened steel": 3,
+                        "Diamond": 10,
+                        "Emerald": 20,
+                        "Obsidian": 15,
                         "Netherite Ingot": 1,
-                        "Nether brick": 4,
-                        "Resin brick": 8,
+                        "Nether brick": 5,
+                        "Resin brick": 16,
+                        "Redstone": 16,
+                        "Glowstone dust": 8,
                         "Levels": 5
                     }
                 ],
                 "temperature": 1200,
-                "time": 25,
+                "time": 10,
                 "success_rate": 0.8,
                 "cooler": [
                         "Blue ice",
@@ -98,17 +101,19 @@
             "Titane": {
                 "items": [
                     {
-                        "Ombralite": 2,
-                        "Diamond": 12,
-                        "Netherite Ingot": 1,
-                        "Amethyst cluster": 8,
-                        "Ender pearl": 4,
-                        "Resin brick": 8,
+                        "Ombralite": 3,
+                        "Diamond": 32,
+                        "Netherite Ingot": 2,
+                        "Amethyst cluster": 16,
+                        "Ender pearl": 5,
+                        "Resin brick": 20,
+                        "Glowstone dust": 8,
+                        "Golden dandelion": 6,
                         "Levels": 8
                     }
                 ],
                 "temperature": 1600,
-                "time": 40,
+                "time": 15,
                 "success_rate": 0.7,
                 "cooler": [
                         "Blue ice",
@@ -119,18 +124,20 @@
             "Forged Obsidian": {
                 "items": [
                     {
-                        "Titane": 2,
-                        "Diamond": 16,
-                        "Obsidian": 24,
-                        "Netherite Ingot": 1,
-                        "Amethyst cluster": 8,
-                        "Resin brick": 8,
-                        "Nether star": 1,
+                        "Titane": 3,
+                        "Diamond": 48,
+                        "Obsidian": 64,
+                        "Netherite Ingot": 6,
+                        "Amethyst cluster": 24,
+                        "Resin brick": 24,
+                        "Nether star": 3,
+                        "Golden dandelion": 6,
+                        "Wither rose": 3,
                         "Levels": 10
                     }
                 ],
                 "temperature": 2000,
-                "time": 60,
+                "time": 20,
                 "success_rate": 0.6,
                 "cooler": [
                         "Heart of the sea"
@@ -139,15 +146,17 @@
             "Moonarium": {
                 "items": [
                     {
-                        "Forged Obsidian": 2,
-                        "Nether star": 2,
-                        "Netherite Ingot": 1,
-                        "Resin brick": 8,
+                        "Forged Obsidian": 3,
+                        "Nether star": 10,
+                        "Netherite Ingot": 10,
+                        "Resin brick": 32,
+                        "Wither rose": 3,
+                        "Sculk": 16,
                         "Levels": 2
                     }
                 ],
                 "temperature": 2500,
-                "time": 60,
+                "time": 30,
                 "success_rate": 0.6,
                 "cooler": [
                         "Heart of the sea"
