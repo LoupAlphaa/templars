@@ -131,7 +131,7 @@ export default function Calculator() {
         return <div className="calculator">Chargement des données...</div>;
     }
 
-    const equipmentTypes = ['Helmet', 'Chestplate', 'Leggings', 'Boots', 'Sword', 'Pickaxe', 'Axe', 'Shovel', 'Hoe'];
+    const equipmentTypes = ['Helmet', 'Chestplate', 'Leggings', 'Boots', 'Sword', 'Pickaxe', 'Axe', 'Shovel', 'Hoe', 'Fishing rod', 'Elytra', 'Trident', 'Spear', 'Mace', 'Shield', 'Crossbow', 'Bow'];
 
     return (
         <div className="calculator">
