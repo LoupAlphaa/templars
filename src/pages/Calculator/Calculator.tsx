@@ -167,11 +167,56 @@ export default function Calculator() {
         setResult(computeWithClamping(ownedIngots));
     }, [data, calculatorMode, selectedAlloy, ingotQuantityText, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, equipmentQuantityText, ownedIngots]);
 
-    if (loading) {
-        return <div className="calculator">Chargement des données...</div>;
-    }
-
     const equipmentTypes = ['Helmet', 'Chestplate', 'Leggings', 'Boots', 'Sword', 'Pickaxe', 'Axe', 'Shovel', 'Hoe', 'Fishing rod', 'Elytra', 'Trident', 'Spear', 'Mace', 'Shield', 'Crossbow', 'Bow'];
+
+    const noNetheriteEquipment = new Set(['Fishing rod', 'Mace', 'Crossbow', 'Bow', 'Trident', 'Shield', 'Elytra']);
+    const minStartAlloyForEquipment: Record<string, string> = {
+        'Fishing rod': 'Acier trempé',
+    };
+
+    const minStartAlloy = minStartAlloyForEquipment[selectedEquipmentType] ?? 'Bronze';
+
+    const allowedStartAlloys = ['Netherite', ...alloysNames.slice(0, -1)].filter((alloy) => {
+        if (selectedEquipmentType === 'Fishing rod' && alloy === 'Bronze') {
+            return false;
+        }
+        if (alloy !== 'Netherite') {
+            const minIndex = alloysNames.indexOf(minStartAlloy);
+            const alloyIndex = alloysNames.indexOf(alloy);
+            if (minIndex === -1 || alloyIndex === -1) {
+                return false;
+            }
+            return alloyIndex >= minIndex;
+        }
+        return true;
+    });
+
+    const startIndexForTarget = selectedStartAlloy === 'Netherite' ? -1 : alloysNames.indexOf(selectedStartAlloy);
+    const allowedTargetAlloys = alloysNames.filter((alloy) => {
+        if (selectedEquipmentType === 'Fishing rod' && alloy === 'Bronze') {
+            return false;
+        }
+
+        // Exclude the start alloy and any previous alloys: only allow strictly later alloys
+        return alloysNames.indexOf(alloy) > startIndexForTarget;
+    });
+
+    useEffect(() => {
+        if (calculatorMode !== 'equipment' || alloysNames.length === 0) return;
+
+        const startAlloys = allowedStartAlloys.length > 0 ? allowedStartAlloys : ['Netherite'];
+        const currentStart = startAlloys.includes(selectedStartAlloy) ? selectedStartAlloy : startAlloys[0];
+        if (currentStart !== selectedStartAlloy) {
+            setSelectedStartAlloy(currentStart);
+        }
+
+        const currentStartIndex = currentStart === 'Netherite' ? -1 : alloysNames.indexOf(currentStart);
+        const targetAlloys = allowedTargetAlloys.filter((alloy) => alloysNames.indexOf(alloy) > currentStartIndex);
+        const currentTarget = targetAlloys.includes(selectedTargetAlloy) ? selectedTargetAlloy : targetAlloys[0] ?? allowedTargetAlloys[0];
+        if (currentTarget && currentTarget !== selectedTargetAlloy) {
+            setSelectedTargetAlloy(currentTarget);
+        }
+    }, [calculatorMode, selectedEquipmentType, alloysNames, selectedStartAlloy, selectedTargetAlloy]);
 
     return (
         <div className="calculator">
@@ -236,44 +281,24 @@ export default function Calculator() {
                     <div className="calculator-controls">
                         <div className="control-group">
                             <label htmlFor="start-alloy">Point de départ</label>
-                            <select
+                                <select
                                 id="start-alloy"
                                 value={selectedStartAlloy}
                                 onChange={(e) => {
                                     const newStart = e.target.value;
                                     setSelectedStartAlloy(newStart);
-                                    // If start equals target, change target to next alloy in progression
-                                    if (newStart === selectedTargetAlloy) {
-                                        if (newStart === 'Netherite') {
-                                            setSelectedTargetAlloy(alloysNames[0]);
-                                        } else {
-                                            const startIndex = alloysNames.indexOf(newStart);
-
-                                            if (startIndex >= 0 && startIndex + 1 < alloysNames.length) {
-                                                setSelectedTargetAlloy(alloysNames[startIndex + 1]);
-                                            }
-                                        }
-                                    } else {
-                                        const startIndex =
-                                            newStart === 'Netherite' ? -1 : alloysNames.indexOf(newStart);
-                                        const targetIndex =
-                                            selectedTargetAlloy === 'Netherite'
-                                                ? -1
-                                                : alloysNames.indexOf(selectedTargetAlloy);
-                                        if (startIndex > targetIndex) {
-                                            if (startIndex + 1 < alloysNames.length) {
-                                                setSelectedTargetAlloy(alloysNames[startIndex + 1]);
-                                            }
-                                        }
-                                    }
                                 }}
                             >
-                                <option value="Netherite">Netherite</option>
-                                {alloysNames.slice(0, -1).map((alloy) => (
-                                    <option key={alloy} value={alloy}>
-                                        {alloy}
-                                    </option>
-                                ))}
+                                {allowedStartAlloys.map((alloy) => {
+                                    const isSpecialNoNetherite = alloy === 'Netherite' && noNetheriteEquipment.has(selectedEquipmentType);
+                                    const isFishingRodBronze = selectedEquipmentType === 'Fishing rod' && alloy === 'Bronze';
+                                    const label = isSpecialNoNetherite || isFishingRodBronze ? selectedEquipmentType : alloy;
+                                    return (
+                                        <option key={alloy} value={alloy}>
+                                            {label}
+                                        </option>
+                                    );
+                                })}
                             </select>
                         </div>
 
@@ -284,15 +309,18 @@ export default function Calculator() {
                                 value={selectedTargetAlloy}
                                 onChange={(e) => setSelectedTargetAlloy(e.target.value)}
                             >
-                                {alloysNames.map((alloy, index) => (
-                                    <option
-                                        key={alloy}
-                                        value={alloy}
-                                        disabled={index <= startIndex}
-                                    >
-                                        {alloy}
-                                    </option>
-                                ))}
+                                {allowedTargetAlloys.map((alloy) => {
+                                    const index = alloysNames.indexOf(alloy);
+                                    return (
+                                        <option
+                                            key={alloy}
+                                            value={alloy}
+                                            disabled={index <= startIndex}
+                                        >
+                                            {alloy}
+                                        </option>
+                                    );
+                                })}
                             </select>
                         </div>
 
