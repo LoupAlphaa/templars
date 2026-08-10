@@ -68,13 +68,13 @@ export default function Calculator() {
 
     // Ingots mode
     const [selectedAlloy, setSelectedAlloy] = useState<string>('Bronze');
-    const [ingotQuantity, setIngotQuantity] = useState<number>(1);
+    const [ingotQuantityText, setIngotQuantityText] = useState<string>('1');
 
     // Equipment mode
     const [selectedStartAlloy, setSelectedStartAlloy] = useState<string>('Netherite');
     const [selectedTargetAlloy, setSelectedTargetAlloy] = useState<string>('Bronze');
     const [selectedEquipmentType, setSelectedEquipmentType] = useState<string>('Helmet');
-    const [equipmentQuantity, setEquipmentQuantity] = useState<number>(1);
+    const [equipmentQuantityText, setEquipmentQuantityText] = useState<string>('1');
 
     // Lingots déjà possédés (commun aux deux modes)
     const [ownedIngots, setOwnedIngots] = useState<Record<string, number>>({});
@@ -103,30 +103,45 @@ export default function Calculator() {
     useEffect(() => {
         if (!data) return;
 
+        const parsedIngotQuantity = parseInt(ingotQuantityText, 10);
+        const parsedEquipmentQuantity = parseInt(equipmentQuantityText, 10);
+        const ingotQuantityValid = Number.isInteger(parsedIngotQuantity) && parsedIngotQuantity > 0;
+        const equipmentQuantityValid = Number.isInteger(parsedEquipmentQuantity) && parsedEquipmentQuantity > 0;
+
+        if (calculatorMode === 'ingots' && !ingotQuantityValid) {
+            setResult(null);
+            return;
+        }
+
+        if (calculatorMode === 'equipment' && !equipmentQuantityValid) {
+            setResult(null);
+            return;
+        }
+
         // First pass with empty owned to get stable alloysIngotsMax and chain order.
         // Second pass with clamped owned to avoid ghost values (values hidden by the UI
         // cap but still in state) incorrectly reducing raw-material totals in calculatorUtils.
         const computeWithClamping = (rawOwned: Record<string, number>) => {
             if (calculatorMode === 'ingots') {
-                const raw = calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', {}, ingotQuantity);
+                const raw = calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', {}, parsedIngotQuantity);
                 const chain = raw.fullChain;
                 const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, selectedAlloy);
-                return calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', clamped, ingotQuantity);
+                return calculateMaterialsNeeded(data, 'Netherite', selectedAlloy, 'Lingot', clamped, parsedIngotQuantity);
             } else {
                 const isNetherite = selectedStartAlloy === 'Netherite';
                 const raw = isNetherite
-                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, {}, equipmentQuantity)
-                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, {}, equipmentQuantity);
+                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, {}, parsedEquipmentQuantity)
+                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, {}, parsedEquipmentQuantity);
                 const chain = raw.fullChain;
                 const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, selectedTargetAlloy);
                 return isNetherite
-                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, clamped, equipmentQuantity)
-                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, clamped, equipmentQuantity);
+                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, clamped, parsedEquipmentQuantity)
+                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, clamped, parsedEquipmentQuantity);
             }
         };
 
         setResult(computeWithClamping(ownedIngots));
-    }, [data, calculatorMode, selectedAlloy, ingotQuantity, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, equipmentQuantity, ownedIngots]);
+    }, [data, calculatorMode, selectedAlloy, ingotQuantityText, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, equipmentQuantityText, ownedIngots]);
 
     if (loading) {
         return <div className="calculator">Chargement des données...</div>;
@@ -183,8 +198,8 @@ export default function Calculator() {
                                 type="number"
                                 min="1"
                                 max="999"
-                                value={ingotQuantity}
-                                onChange={(e) => setIngotQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                value={ingotQuantityText}
+                                onChange={(e) => setIngotQuantityText(e.target.value)}
                                 className="quantity-input"
                             />
                         </div>
@@ -278,8 +293,8 @@ export default function Calculator() {
                                 type="number"
                                 min="1"
                                 max="999"
-                                value={equipmentQuantity}
-                                onChange={(e) => setEquipmentQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                value={equipmentQuantityText}
+                                onChange={(e) => setEquipmentQuantityText(e.target.value)}
                                 className="quantity-input"
                             />
                         </div>
@@ -373,8 +388,8 @@ export default function Calculator() {
                                 <div className="summary-header">
                                     <h2>Matériaux bruts</h2>
                                     <span className="product-badge">
-                                        {calculatorMode === 'ingots' && `⚱️ Lingots x${ingotQuantity} de ${selectedAlloy}`}
-                                        {calculatorMode === 'equipment' && `${selectedEquipmentType} x${equipmentQuantity}`}
+                                        {calculatorMode === 'ingots' && `⚱️ Lingots x${parseInt(ingotQuantityText, 10) || 0} de ${selectedAlloy}`}
+                                        {calculatorMode === 'equipment' && `${selectedEquipmentType} x${parseInt(equipmentQuantityText, 10) || 0}`}
                                     </span>
                                 </div>
                                 <div className="materials-list">
