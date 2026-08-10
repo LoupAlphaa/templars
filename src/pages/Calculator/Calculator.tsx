@@ -219,11 +219,12 @@ export default function Calculator() {
                             <label htmlFor="quantity">Quantité de lingots</label>
                             <input
                                 id="quantity"
-                                type="number"
-                                min="1"
-                                max="999"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                maxLength={3}
                                 value={ingotQuantityText}
-                                onChange={(e) => setIngotQuantityText(e.target.value)}
+                                onChange={(e) => setIngotQuantityText(e.target.value.replace(/\D/g, ''))}
                                 className="quantity-input"
                             />
                         </div>
@@ -314,11 +315,12 @@ export default function Calculator() {
                             <label htmlFor="equipment-quantity">Quantité d'équipements</label>
                             <input
                                 id="equipment-quantity"
-                                type="number"
-                                min="1"
-                                max="999"
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                maxLength={3}
                                 value={equipmentQuantityText}
-                                onChange={(e) => setEquipmentQuantityText(e.target.value)}
+                                onChange={(e) => setEquipmentQuantityText(e.target.value.replace(/\D/g, ''))}
                                 className="quantity-input"
                             />
                         </div>
