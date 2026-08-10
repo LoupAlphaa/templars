@@ -26,7 +26,9 @@ export interface AlloyDefinition {
 
 export interface EquipmentDefinition {
     ingot: number;
-    wood_rod: number;
+    wood_rod?: number;
+    string?: number;
+    [material: string]: number | undefined;
 }
 
 export interface Material {
@@ -47,10 +49,7 @@ export interface CraftingStep {
     /** Raw materials needed to forge this alloy (excluding previous-tier ingots) */
     alloysCost: Material[];
     /** Equipment pieces crafted from this alloy */
-    equipmentCost: {
-        ingot: number;
-        rod: number;
-    };
+    equipmentCost: Record<string, number>;
 
     /** Alloy required temperature */
     temperature: number;
@@ -246,8 +245,7 @@ function buildStep(
     alloysChain: string[],
     alloysName: string,
     ingotCount: number,
-    equipmentIngots: number,
-    equipmentRods: number
+    equipmentCost: Record<string, number>
 ): CraftingStep {
     const alloy = alloys[alloysName];
     const ingredients = getAlloyIngredients(alloy);
@@ -282,10 +280,7 @@ function buildStep(
         alloysName,
         ingotCount,
         alloysCost: directCost,
-        equipmentCost: {
-            ingot: equipmentIngots,
-            rod: equipmentRods,
-        },
+        equipmentCost,
         combustible,
         combustiblesPossible,
         refroidisseursPossible: [], // rempli dans computeResult
@@ -364,17 +359,19 @@ function computeResult(
         const ingotCount = ingotCounts[i];
         const isTarget = i === chain.length - 1;
 
-        const equipIngots = isTarget && equipment ? equipment.ingot : 0;
-        const equipRods = isTarget && equipment ? equipment.wood_rod : 0;
-
         const step = buildStep(
             alloys,
             combustibles,
             chain.slice(0, i + 1),
             alloysName,
             ingotCount,
-            equipIngots,
-            equipRods
+            isTarget && equipment
+                ? Object.fromEntries(
+                    Object.entries(equipment)
+                        .filter(([, qty]) => qty && qty > 0)
+                        .map(([key, qty]) => [key, (qty ?? 0) * quantity])
+                )
+                : {}
         );
 
         // Remplit les refroidisseurs possibles pour ce step.
@@ -424,9 +421,13 @@ function computeResult(
             expandToBase(name, quantity * ingotCount);
         }
 
-        // Bâtons de bois pour l'équipement final uniquement.
-        if (isTarget && equipment && equipment.wood_rod > 0) {
-            addMaterial(totalMap, 'Wood rod', equipment.wood_rod);
+        // Matériaux non-lingots pour l'équipement final uniquement.
+        if (isTarget && equipment) {
+            for (const [materialName, materialQty] of Object.entries(equipment)) {
+                if (materialName === 'ingot' || materialQty === undefined || materialQty <= 0) continue;
+                const displayName = materialName === 'wood_rod' ? 'Wood rod' : materialName === 'string' ? 'String' : materialName;
+                addMaterial(totalMap, displayName, materialQty * quantity);
+            }
         }
     }
 

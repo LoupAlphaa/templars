@@ -74,6 +74,7 @@ export default function Calculator() {
     const [selectedStartAlloy, setSelectedStartAlloy] = useState<string>('Netherite');
     const [selectedTargetAlloy, setSelectedTargetAlloy] = useState<string>('Bronze');
     const [selectedEquipmentType, setSelectedEquipmentType] = useState<string>('Helmet');
+    const [equipmentQuantity, setEquipmentQuantity] = useState<number>(1);
 
     // Lingots déjà possédés (commun aux deux modes)
     const [ownedIngots, setOwnedIngots] = useState<Record<string, number>>({});
@@ -114,18 +115,18 @@ export default function Calculator() {
             } else {
                 const isNetherite = selectedStartAlloy === 'Netherite';
                 const raw = isNetherite
-                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, {})
-                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, {});
+                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, {}, equipmentQuantity)
+                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, {}, equipmentQuantity);
                 const chain = raw.fullChain;
                 const clamped = clampOwnedIngots(chain, raw.alloysIngotsMax, rawOwned, selectedTargetAlloy);
                 return isNetherite
-                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, clamped)
-                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, clamped);
+                    ? calculateFromNetherite(data, selectedTargetAlloy, selectedEquipmentType, clamped, equipmentQuantity)
+                    : calculateMaterialsNeeded(data, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, clamped, equipmentQuantity);
             }
         };
 
         setResult(computeWithClamping(ownedIngots));
-    }, [data, calculatorMode, selectedAlloy, ingotQuantity, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, ownedIngots]);
+    }, [data, calculatorMode, selectedAlloy, ingotQuantity, selectedStartAlloy, selectedTargetAlloy, selectedEquipmentType, equipmentQuantity, ownedIngots]);
 
     if (loading) {
         return <div className="calculator">Chargement des données...</div>;
@@ -269,6 +270,19 @@ export default function Calculator() {
                                 ))}
                             </select>
                         </div>
+
+                        <div className="control-group">
+                            <label htmlFor="equipment-quantity">Quantité d'équipements</label>
+                            <input
+                                id="equipment-quantity"
+                                type="number"
+                                min="1"
+                                max="999"
+                                value={equipmentQuantity}
+                                onChange={(e) => setEquipmentQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                className="quantity-input"
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -360,7 +374,7 @@ export default function Calculator() {
                                     <h2>Matériaux bruts</h2>
                                     <span className="product-badge">
                                         {calculatorMode === 'ingots' && `⚱️ Lingots x${ingotQuantity} de ${selectedAlloy}`}
-                                        {calculatorMode === 'equipment' && `${selectedEquipmentType}`}
+                                        {calculatorMode === 'equipment' && `${selectedEquipmentType} x${equipmentQuantity}`}
                                     </span>
                                 </div>
                                 <div className="materials-list">
@@ -524,17 +538,20 @@ export default function Calculator() {
                                                             <span className="step-number">{idx + 1}</span>
                                                         </div>
                                                         <div className="step-content">
-                                                            <div className="equipment-cost">
-                                                                <p className="label">Coût de l'équipement:</p>
-                                                                <ul>
-                                                                    {step.equipmentCost.ingot > 0 && (
-                                                                        <li>{step.equipmentCost.ingot}x lingots</li>
-                                                                    )}
-                                                                    {step.equipmentCost.rod > 0 && (
-                                                                        <li>{step.equipmentCost.rod}x bâtons de bois</li>
-                                                                    )}
-                                                                </ul>
-                                                            </div>
+                                                            {Object.entries(step.equipmentCost).length > 0 && (
+                                                                <div className="equipment-cost">
+                                                                    <p className="label">Coût de l'équipement:</p>
+                                                                    <ul>
+                                                                        {Object.entries(step.equipmentCost).map(([materialName, qty]) => {
+                                                                            if (!qty || qty <= 0) return null;
+                                                                            const label = materialName === 'wood_rod' ? 'bâtons de bois' : materialName === 'string' ? 'string' : materialName;
+                                                                            return (
+                                                                                <li key={materialName}>{qty}x {label}</li>
+                                                                            );
+                                                                        })}
+                                                                    </ul>
+                                                                </div>
+                                                            )}
 
                                                             <div className="materials-needed">
                                                                 <p className="label">Matériaux pour l'alliage:</p>
