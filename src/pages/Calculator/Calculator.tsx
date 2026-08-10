@@ -591,6 +591,12 @@ export default function Calculator() {
                                                                     <strong>Température requise:</strong> {step.temperature}
                                                                 </div>
 
+                                                                {remaining > 0 && step.combustible && (
+                                                                    <div className="thermo-row">
+                                                                        <strong>Combustible conseillé:</strong> {remaining}x {step.combustible.name} ({step.combustible.temperature})
+                                                                    </div>
+                                                                )}
+
                                                                 <div className="thermo-row">
                                                                     <strong>Combustibles possibles:</strong>
                                                                     <ul>
