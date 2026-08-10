@@ -59,6 +59,30 @@ function clampOwnedIngots(
     }
     return clamped;
 }
+
+function formatCompressedQuantity(quantity: number, itemName: string): string {
+    if (itemName === 'Levels' || quantity <= 0) {
+        return '';
+    }
+
+    const shulkers = Math.floor(quantity / 1728);
+    const remainderAfterShulkers = quantity % 1728;
+    const stacks = Math.floor(remainderAfterShulkers / 64);
+    const items = remainderAfterShulkers % 64;
+
+    const parts: string[] = [];
+    if (shulkers > 0) {
+        parts.push(`${shulkers} shulker${shulkers > 1 ? 's' : ''}`);
+    }
+    if (stacks > 0) {
+        parts.push(`${stacks} stack${stacks > 1 ? 's' : ''}`);
+    }
+    if (items > 0) {
+        parts.push(`${items}`);
+    }
+
+    return parts.length > 0 ? ` (${parts.join(' + ')})` : '';
+}
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Calculator() {
@@ -571,16 +595,19 @@ export default function Calculator() {
                                                             <div className="materials-needed">
                                                                 <p className="label">Matériaux pour l'alliage:</p>
                                                                 <ul>
-                                                                    {step.alloysCost.map((material, midx) => (
-                                                                        <li key={midx}>
-                                                                            <span className="item-icon">{getItemIcon(material.name) ? (
-                                                                                <img src={getItemIcon(material.name)} alt={material.name} />
-                                                                            ) : (
-                                                                                '📦'
-                                                                            )}</span>
-                                                                            {Math.ceil(material.quantity * scale)}x {material.name}
-                                                                        </li>
-                                                                    ))}
+                                                                    {step.alloysCost.map((material, midx) => {
+                                                                        const qty = Math.ceil(material.quantity * scale);
+                                                                        return (
+                                                                            <li key={midx}>
+                                                                                <span className="item-icon">{getItemIcon(material.name) ? (
+                                                                                    <img src={getItemIcon(material.name)} alt={material.name} />
+                                                                                ) : (
+                                                                                    '📦'
+                                                                                )}</span>
+                                                                                {qty}x {material.name}{formatCompressedQuantity(qty, material.name)}
+                                                                            </li>
+                                                                        );
+                                                                    })}
                                                                 </ul>
                                                             </div>
 
