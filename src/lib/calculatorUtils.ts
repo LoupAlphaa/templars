@@ -351,7 +351,10 @@ function computeResult(
         const nextAlloy = alloys[chain[i + 1]];
         const ingr = getAlloyIngredients(nextAlloy).find((m) => m.name === chain[i]);
         const consumedByRecipe = (ingr ? ingr.quantity : 0) * ingotCounts[i + 1];
-        const consumedByEquip = equipment ? equipment.ingot * quantity : 0;
+        // Only include equipment ingot consumption for tiers when starting from Netherite
+        // (startName === null). If the player already starts at a given alloy, they
+        // don't need to craft equipment at lower tiers.
+        const consumedByEquip = startName === null && equipment ? (equipment.ingot * quantity) : 0;
         ingotCounts[i] = consumedByRecipe + consumedByEquip;
     }
 
@@ -370,10 +373,16 @@ function computeResult(
         const equipmentCostForStep: Record<string, number> = equipment
             ? Object.fromEntries(
                 Object.entries(equipment)
-                    .filter(([key, qty]) => qty && qty > 0 && (key === 'ingot' || isTarget))
+                    .filter(([key, qty]) => qty && qty > 0)
                     .map(([key, qty]) => [key, (qty ?? 0) * quantity])
             )
             : {};
+
+        // Add an alloy pearl per equipment for alloys above Bronze.
+        if (equipment && alloysName !== 'Bronze' && equipmentType !== "Fishing rod") {
+            const pearlName = `Perle d'${alloysName}`;
+            equipmentCostForStep[pearlName] = ((equipmentCostForStep[pearlName] ?? 0) + quantity)*3;
+        }
 
         const step = buildStep(
             alloys,
