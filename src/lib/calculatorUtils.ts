@@ -354,7 +354,7 @@ function computeResult(
         // Only include equipment ingot consumption for tiers when starting from Netherite
         // (startName === null). If the player already starts at a given alloy, they
         // don't need to craft equipment at lower tiers.
-        const consumedByEquip = startName === null && equipment ? (equipment.ingot * quantity) : 0;
+        const consumedByEquip = equipment ? equipment.ingot * quantity : 0;
         ingotCounts[i] = consumedByRecipe + consumedByEquip;
     }
 
