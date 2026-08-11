@@ -373,7 +373,7 @@ function computeResult(
         const equipmentCostForStep: Record<string, number> = equipment
             ? Object.fromEntries(
                 Object.entries(equipment)
-                    .filter(([key, qty]) => qty && qty > 0)
+                    .filter(([, qty]) => qty && qty > 0)
                     .map(([key, qty]) => [key, (qty ?? 0) * quantity])
             )
             : {};
@@ -445,7 +445,7 @@ function computeResult(
             for (const [materialName, materialQty] of Object.entries(equipment)) {
                 if (materialName === 'ingot' || materialQty === undefined || materialQty <= 0) continue;
                 const displayName = materialName === 'wood_rod' ? 'Wood rod' : materialName === 'string' ? 'String' : materialName;
-                addMaterial(totalMap, displayName, materialQty * quantity);
+                addMaterial(totalMap, displayName, materialQty * quantity * chain.length);
             }
         }
     }
