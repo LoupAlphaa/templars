@@ -104,7 +104,7 @@ export default function Calculator() {
     const [ownedIngots, setOwnedIngots] = useState<Record<string, number>>({});
 
     const [result, setResult] = useState<CalculationResult | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const [showSteps, setShowSteps] = useState(false);
 
     const startIndex = alloysNames.indexOf(selectedStartAlloy);
