@@ -53,7 +53,7 @@
                         "Heart of the sea"
                 ]
             },
-            "Hardened steel": {
+            "Acier trempé": {
                 "items": [
                     {
                         "Bronze": 2,
@@ -77,7 +77,7 @@
             "Ombralite": {
                 "items": [
                     {
-                        "Hardened steel": 3,
+                        "Acier trempé": 3,
                         "Diamond": 10,
                         "Emerald": 20,
                         "Obsidian": 15,
@@ -121,7 +121,7 @@
                         "Heart of the sea"
                 ]
             },
-            "Forged Obsidian": {
+            "Obsidienne forgée": {
                 "items": [
                     {
                         "Titane": 3,
@@ -146,7 +146,7 @@
             "Moonarium": {
                 "items": [
                     {
-                        "Forged Obsidian": 3,
+                        "Obsidienne forgée": 3,
                         "Nether star": 10,
                         "Netherite Ingot": 10,
                         "Resin brick": 32,
@@ -189,15 +189,15 @@
     "equipments": [
         {
             "Pickaxe":{
-                "ingot": 3,
+                "ingot": 4,
                 "wood_rod": 2
             },
             "Axe":{
-                "ingot": 3,
+                "ingot": 4,
                 "wood_rod": 2
             },
             "Shovel":{
-                "ingot": 1,
+                "ingot": 2,
                 "wood_rod": 2
             },
             "Sword":{
@@ -205,15 +205,15 @@
                 "wood_rod": 1
             },
             "Hoe":{
-                "ingot": 2,
+                "ingot": 3,
                 "wood_rod": 2
             },
             "Helmet":{
-                "ingot": 5,
+                "ingot": 6,
                 "wood_rod": 0
             },
             "Chestplate":{
-                "ingot": 8,
+                "ingot": 7,
                 "wood_rod": 0
             },
             "Leggings":{
@@ -223,6 +223,35 @@
             "Boots":{
                 "ingot": 4,
                 "wood_rod": 0
+            },
+            "Mace": {
+                "ingot": 2,
+                "wood_rod": 2
+            },
+            "Bow": {
+                "ingot": 6,
+                "string": 3
+            },
+            "Crossbow": {
+                "ingot": 6,
+                "string": 2
+            },
+            "Shield": {
+                "ingot": 6
+            },
+            "Fishing rod": {
+                "ingot": 4,
+                "string": 3
+            },
+            "Elytra": {
+                "ingot": 6
+            },
+            "Trident": {
+                "ingot": 4
+            },
+            "Spear": {
+                "ingot": 2,
+                "wood_rod": 2
             }
         }
     ]

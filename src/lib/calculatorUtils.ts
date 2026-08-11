@@ -26,7 +26,9 @@ export interface AlloyDefinition {
 
 export interface EquipmentDefinition {
     ingot: number;
-    wood_rod: number;
+    wood_rod?: number;
+    string?: number;
+    [material: string]: number | undefined;
 }
 
 export interface Material {
@@ -47,10 +49,7 @@ export interface CraftingStep {
     /** Raw materials needed to forge this alloy (excluding previous-tier ingots) */
     alloysCost: Material[];
     /** Equipment pieces crafted from this alloy */
-    equipmentCost: {
-        ingot: number;
-        rod: number;
-    };
+    equipmentCost: Record<string, number>;
 
     /** Alloy required temperature */
     temperature: number;
@@ -198,10 +197,16 @@ function getProgressionChain(
     const targetIdx = sorted.indexOf(targetName);
     if (targetIdx === -1) return [];
 
-    const startIdx = startName === null ? 0 : sorted.indexOf(startName);
+    if (startName === null) {
+        // Starting from Netherite means include from the first alloy (index 0).
+        return sorted.slice(0, targetIdx + 1);
+    }
 
-    // Return every alloy from (startIdx+1) to targetIdx inclusive.
-    return sorted.slice(startIdx, targetIdx + 1);
+    const startIdx = sorted.indexOf(startName);
+    if (startIdx === -1) return [];
+
+    // Return every alloy strictly after the start alloy up to the target inclusive.
+    return sorted.slice(startIdx + 1, targetIdx + 1);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -246,8 +251,7 @@ function buildStep(
     alloysChain: string[],
     alloysName: string,
     ingotCount: number,
-    equipmentIngots: number,
-    equipmentRods: number
+    equipmentCost: Record<string, number>
 ): CraftingStep {
     const alloy = alloys[alloysName];
     const ingredients = getAlloyIngredients(alloy);
@@ -282,10 +286,7 @@ function buildStep(
         alloysName,
         ingotCount,
         alloysCost: directCost,
-        equipmentCost: {
-            ingot: equipmentIngots,
-            rod: equipmentRods,
-        },
+        equipmentCost,
         combustible,
         combustiblesPossible,
         refroidisseursPossible: [], // rempli dans computeResult
@@ -339,19 +340,19 @@ function computeResult(
         targetIngotCount = equipment.ingot * quantity;
     }
 
-    // Step 2: walk chain in reverse and compute ingot counts per step.
-    // Each alloy in position i might be consumed by alloy at i+1.
+    // Step 2: walk chain in reverse et compute ingot counts par step.
+    // Pour chaque tier i (sauf le dernier) :
+    //   ingotCounts[i] = lingots consommés par la RECETTE de chain[i+1]
+    //                  + lingots pour upgrader l'ÉQUIPEMENT à ce tier intermédiaire
     const ingotCounts: number[] = new Array(chain.length).fill(0);
     ingotCounts[chain.length - 1] = targetIngotCount;
 
     for (let i = chain.length - 2; i >= 0; i--) {
-        const nextAlloyName = chain[i + 1];
-        const nextAlloy = alloys[nextAlloyName];
-        const ingredients = getAlloyIngredients(nextAlloy);
-        // How many of chain[i] does chain[i+1] need per batch?
-        const ingr = ingredients.find((m) => m.name === chain[i]);
-        const perBatch = ingr ? ingr.quantity : 0;
-        ingotCounts[i] = perBatch * ingotCounts[i + 1];
+        const nextAlloy = alloys[chain[i + 1]];
+        const ingr = getAlloyIngredients(nextAlloy).find((m) => m.name === chain[i]);
+        const consumedByRecipe = (ingr ? ingr.quantity : 0) * ingotCounts[i + 1];
+        const consumedByEquip = equipment ? equipment.ingot * quantity : 0;
+        ingotCounts[i] = consumedByRecipe + consumedByEquip;
     }
 
     // Step 3: build steps and accumulate total materials.
@@ -364,8 +365,15 @@ function computeResult(
         const ingotCount = ingotCounts[i];
         const isTarget = i === chain.length - 1;
 
-        const equipIngots = isTarget && equipment ? equipment.ingot : 0;
-        const equipRods = isTarget && equipment ? equipment.wood_rod : 0;
+        // Le coût d'ingots s'applique à TOUS les tiers (chaque upgrade d'équipement).
+        // Les matériaux non-ingots (wood_rod, string…) uniquement au tier final.
+        const equipmentCostForStep: Record<string, number> = equipment
+            ? Object.fromEntries(
+                Object.entries(equipment)
+                    .filter(([key, qty]) => qty && qty > 0 && (key === 'ingot' || isTarget))
+                    .map(([key, qty]) => [key, (qty ?? 0) * quantity])
+            )
+            : {};
 
         const step = buildStep(
             alloys,
@@ -373,8 +381,7 @@ function computeResult(
             chain.slice(0, i + 1),
             alloysName,
             ingotCount,
-            equipIngots,
-            equipRods
+            equipmentCostForStep
         );
 
         // Remplit les refroidisseurs possibles pour ce step.
@@ -424,50 +431,51 @@ function computeResult(
             expandToBase(name, quantity * ingotCount);
         }
 
-        // Bâtons de bois pour l'équipement final uniquement.
-        if (isTarget && equipment && equipment.wood_rod > 0) {
-            addMaterial(totalMap, 'Wood rod', equipment.wood_rod);
+        // Matériaux non-lingots pour l'équipement final uniquement.
+        if (isTarget && equipment) {
+            for (const [materialName, materialQty] of Object.entries(equipment)) {
+                if (materialName === 'ingot' || materialQty === undefined || materialQty <= 0) continue;
+                const displayName = materialName === 'wood_rod' ? 'Wood rod' : materialName === 'string' ? 'String' : materialName;
+                addMaterial(totalMap, displayName, materialQty * quantity);
+            }
         }
     }
 
-    // Build alloysIngots and alloysIngotsMax.
+    // alloysIngotsMax : contient le max déclarable pour chaque alliage dans "Lingots possédés".
     //
-    // alloysIngotsMax must cover ALL alloys from the very first tier (Bronze) up to the
-    // target, even when startName is a mid-tier alloy.  This lets the player declare that
-    // they already own, say, Bronze ingots even when the calculation starts from
-    // Hardened Steel — because Bronze is still an ingredient of Hardened Steel.
+    // Pour les alliages DE LA CHAIN (chain active) : on prend directement alloysIngotsMap
+    // qui contient les bons comptes (avec consumedByEquip intermédiaires inclus).
     //
-    // To compute the raw "how many would be needed without any owned" count for alloys
-    // that sit *before* startName we run a full chain from scratch (startName = null).
+    // Pour les alliages HORS-CHAIN (avant startName, ex: Bronze quand on part d'Acier trempé) :
+    // ces upgrades d'équipement ont déjà été faits par le joueur — on ne compte que ce que
+    // la RECETTE du premier maillon de la chain consomme, sans consumedByEquip.
     const fullChain = getProgressionChain(alloys, null, targetName);
-    // Counts for the full chain (ignoring owned) so we can fill alloysIngotsMax.
-    const fullIngotCounts: number[] = new Array(fullChain.length).fill(0);
-    const fullTargetIdx = fullChain.length - 1;
-    // The target ingot count is already known from the main calculation.
-    fullIngotCounts[fullTargetIdx] = targetIngotCount;
-    for (let i = fullChain.length - 2; i >= 0; i--) {
-        const nextAlloy = alloys[fullChain[i + 1]];
-        const ingr = getAlloyIngredients(nextAlloy).find((m) => m.name === fullChain[i]);
-        const perBatch = ingr ? ingr.quantity : 0;
-        fullIngotCounts[i] = perBatch * fullIngotCounts[i + 1];
+    const alloysIngotsMax: Record<string, number> = {};
+
+    // Alliages de la chain active : valeurs exactes depuis alloysIngotsMap.
+    for (const [name, count] of alloysIngotsMap.entries()) {
+        alloysIngotsMax[name] = count;
     }
 
-    const alloysIngotsMax: Record<string, number> = {};
-    fullChain.forEach((name, i) => {
-        alloysIngotsMax[name] = fullIngotCounts[i];
-    });
+    // Alliages hors-chain : on remonte depuis le premier maillon en ne comptant
+    // que ce que les recettes consomment (pas les upgrades déjà effectués).
+    const firstChainIdx = fullChain.indexOf(chain[0]);
+    for (let i = firstChainIdx - 1; i >= 0; i--) {
+        const nextName = fullChain[i + 1];
+        const nextCount = alloysIngotsMax[nextName] ?? 0;
+        const ingr = getAlloyIngredients(alloys[nextName]).find((m) => m.name === fullChain[i]);
+        alloysIngotsMax[fullChain[i]] = (ingr ? ingr.quantity : 0) * nextCount;
+    }
 
-    // alloysIngots drives the "Lingots à forger" display: only the alloys in the active
-    // chain matter here (the ones the player still has to forge in this session).
-    // In lingot mode the target alloy itself is excluded (you are forging it, not owning it).
+    // alloysIngots : quantités à forger dans cette session, avec déduction des possédés.
+    // Construit depuis alloysIngotsMap (pas alloysIngotsMax) pour les alliages de la chain.
+    // En mode lingot : on exclut l'alliage cible (c'est lui qu'on fabrique).
     const displayChain = isLingot ? chain.slice(0, -1) : chain;
-    let alloysIngots: Material[] = displayChain.map((name) => {
-        const total = alloysIngotsMax[name] ?? 0;
+    const alloysIngots: Material[] = displayChain.map((name) => {
+        const total = alloysIngotsMap.get(name) ?? 0;
         const owned = Math.min(ownedIngots[name] ?? 0, total);
         return { name, quantity: Math.max(0, total - owned) };
     });
-    console.log('chain', chain);
-    console.log('alloysIngotsMap', Object.fromEntries(alloysIngotsMap));
 
     // Soustraire les lingots possédés des matériaux bruts nécessaires.
     // Pour chaque lingot possédé d'un alliage, on retranche les matériaux bruts

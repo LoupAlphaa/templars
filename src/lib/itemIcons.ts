@@ -27,10 +27,10 @@ export const ITEM_ICONS: Record<string, string> = {
     
     // Alloys
     'Bronze': Copper,
-    'Hardened steel': Iron,
+    'Acier trempé': Iron,
     'Ombralite': Nether_Brick,
     'Titane': Diamond,
-    'Forged Obsidian': Obsidian,
+    'Obsidienne forgée': Obsidian,
     'Moonarium': Shard,
     
     // Base materials
