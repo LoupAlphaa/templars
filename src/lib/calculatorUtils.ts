@@ -477,15 +477,49 @@ function computeResult(
     }
 
     // alloysIngots : quantités à forger dans cette session, avec déduction des possédés.
-    // - Mode lingot : tous les alliages de la chain sauf le dernier (celui qu'on fabrique).
-    // - Mode équipement : tous les alliages de fullChain sauf le dernier (l'objectif),
-    //   pour inclure les alliages hors-chain (ex: Bronze quand on part d'Acier trempé).
-    const displayChain = isLingot ? chain.slice(0, -1) : fullChain.slice(0);
+    // - Mode lingot : tous les alliages de la chain sauf le dernier.
+    // - Mode équipement : fullChain entière sauf le dernier (inclut les hors-chain).
+    const displayChain = isLingot ? chain.slice(0, -1) : fullChain.slice(0, -1);
     const alloysIngots: Material[] = displayChain.map((name) => {
         const total = alloysIngotsMap.get(name) ?? alloysIngotsMax[name] ?? 0;
         const owned = Math.min(ownedIngots[name] ?? 0, total);
         return { name, quantity: Math.max(0, total - owned) };
     });
+
+    // Construire les steps des alliages hors-chain (avant startName) et les
+    // insérer en tête de steps, dans l'ordre de progression.
+    const outsideChainSteps: CraftingStep[] = [];
+    for (let i = firstChainIdx - 1; i >= 0; i--) {
+        const alloysName = fullChain[i];
+        const ingotCount = alloysIngotsMax[alloysName] ?? 0;
+        if (ingotCount === 0) continue;
+
+        // Pas de coût d'équipement pour les hors-chain (déjà upgradé par le joueur).
+        const outsideStep = buildStep(
+            alloys,
+            combustibles,
+            fullChain.slice(0, i + 1),
+            alloysName,
+            ingotCount,
+            {}
+        );
+
+        const alloyForOutside = alloys[alloysName];
+        const allowedCoolersOutside = alloyForOutside?.cooler ?? null;
+        outsideStep.refroidisseursPossible = Object.entries(coolers)
+            .filter(([name]) => allowedCoolersOutside === null || allowedCoolersOutside.includes(name))
+            .map(([name, { cooling_speed }]) => ({
+                name,
+                cooling_speed,
+                coolingTime: outsideStep.time * (1 - cooling_speed),
+            }))
+            .sort((a, b) => b.cooling_speed - a.cooling_speed);
+
+        outsideChainSteps.unshift(outsideStep);
+    }
+
+    // Fusionner : hors-chain en premier, puis chain active.
+    const allSteps = [...outsideChainSteps, ...steps];
 
     // Soustraire les lingots possédés des matériaux bruts nécessaires.
     // Pour chaque lingot possédé d'un alliage, on retranche les matériaux bruts
@@ -518,7 +552,7 @@ function computeResult(
     }
 
     return {
-        steps,
+        steps: allSteps,
         totalMaterials: mapToList(totalMap).sort((a, b) => b.quantity - a.quantity),
         alloysIngots,
         alloysIngotsMax,
