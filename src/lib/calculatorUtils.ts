@@ -477,11 +477,12 @@ function computeResult(
     }
 
     // alloysIngots : quantités à forger dans cette session, avec déduction des possédés.
-    // Construit depuis alloysIngotsMap (pas alloysIngotsMax) pour les alliages de la chain.
-    // En mode lingot : on exclut l'alliage cible (c'est lui qu'on fabrique).
-    const displayChain = isLingot ? chain.slice(0, -1) : chain;
+    // - Mode lingot : tous les alliages de la chain sauf le dernier (celui qu'on fabrique).
+    // - Mode équipement : tous les alliages de fullChain sauf le dernier (l'objectif),
+    //   pour inclure les alliages hors-chain (ex: Bronze quand on part d'Acier trempé).
+    const displayChain = isLingot ? chain.slice(0, -1) : fullChain.slice(0);
     const alloysIngots: Material[] = displayChain.map((name) => {
-        const total = alloysIngotsMap.get(name) ?? 0;
+        const total = alloysIngotsMap.get(name) ?? alloysIngotsMax[name] ?? 0;
         const owned = Math.min(ownedIngots[name] ?? 0, total);
         return { name, quantity: Math.max(0, total - owned) };
     });
