@@ -546,6 +546,34 @@ export default function Calculator() {
                         </div>
 
                         {result.steps.length > 0 && (() => {
+                            const chain = result.fullChain;
+                            const lastIdx = chain.length - 1;
+
+                            const ratios: number[] = chain.map((name, i) => {
+                                if (i === lastIdx) return 1;
+                                const thisMax = result.alloysIngotsMax[name] ?? 1;
+                                const nextMax = result.alloysIngotsMax[chain[i + 1]] ?? 1;
+                                return nextMax > 0 ? thisMax / nextMax : 1;
+                            });
+
+                            const consumedByHigher = (targetIdx: number): number => {
+                                let consumed = 0;
+                                for (let j = targetIdx + 1; j <= lastIdx; j++) {
+                                    const ownedAtJ = ownedIngots[chain[j]] ?? 0;
+                                    if (ownedAtJ === 0) continue;
+                                    let cascadeRatio = 1;
+                                    for (let k = targetIdx; k < j; k++) cascadeRatio *= ratios[k];
+                                    consumed += ownedAtJ * cascadeRatio;
+                                }
+                                return consumed;
+                            };
+
+                            const remainingToForge = (idx: number): number => {
+                                const rawMax = result.alloysIngotsMax[chain[idx]];
+                                const ownedDirect = Math.min(ownedIngots[chain[idx]] ?? 0, rawMax);
+                                return Math.max(0, rawMax - ownedDirect - consumedByHigher(idx));
+                            };
+
                             return (
                                 <div className="steps-section">
                                     <div className="steps-header">
@@ -562,7 +590,12 @@ export default function Calculator() {
                                     {showSteps && (
                                         <div className="steps-list">
                                             {result.steps.map((step, idx) => {
-                                                if (step.ingotCount === 0) return null;
+                                                const chainIdx = chain.indexOf(step.alloysName);
+                                                const rawMax = result.alloysIngotsMax[step.alloysName] ?? step.ingotCount;
+                                                const remaining = chainIdx !== -1 ? remainingToForge(chainIdx) : step.ingotCount;
+                                                const scale = rawMax > 0 ? remaining / rawMax : 0;
+
+                                                if (remaining === 0) return null;
 
                                                 return (
                                                     <div key={idx} className="step">
@@ -589,16 +622,19 @@ export default function Calculator() {
                                                             <div className="materials-needed">
                                                                 <p className="label">Matériaux pour l'alliage:</p>
                                                                 <ul>
-                                                                    {step.alloysCost.map((material, midx) => (
+                                                                    {step.alloysCost.map((material, midx) => {
+                                                                        const qty = Math.ceil(material.quantity * scale);
+                                                                        return (
                                                                             <li key={midx}>
                                                                                 <span className="item-icon">{getItemIcon(material.name) ? (
                                                                                     <img src={getItemIcon(material.name)} alt={material.name} />
                                                                                 ) : (
                                                                                     '📦'
                                                                                 )}</span>
-                                                                                {material.quantity}x {material.name}{formatCompressedQuantity(material.quantity, material.name)}
+                                                                                {qty}x {material.name}{formatCompressedQuantity(qty, material.name)}
                                                                             </li>
-                                                                        ))}
+                                                                        );
+                                                                    })}
                                                                 </ul>
                                                             </div>
 
@@ -609,9 +645,9 @@ export default function Calculator() {
                                                                     <strong>Température requise:</strong> {step.temperature}
                                                                 </div>
 
-                                                                {step.ingotCount > 0 && step.combustible && (
+                                                                {remaining > 0 && step.combustible && (
                                                                     <div className="thermo-row">
-                                                                        <strong>Combustible conseillé:</strong> {step.ingotCount}x {step.combustible.name} ({step.combustible.temperature})
+                                                                        <strong>Combustible conseillé:</strong> {remaining}x {step.combustible.name} ({step.combustible.temperature})
                                                                     </div>
                                                                 )}
 
